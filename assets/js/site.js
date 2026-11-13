@@ -8,6 +8,8 @@
   "use strict";
   var CFG = window.AVS_CONFIG || {};
   var LOCAL = window.SITE || {};
+  var R = window.AVS_RENDER; // shared page builders (render.js)
+  if (/^(localhost|127\.|\[::1\])/.test(location.hostname) || location.protocol === "file:") R.optimise = false;
   var page = document.body.getAttribute("data-page") || "";
 
   var NAV = [
@@ -258,6 +260,21 @@
         "<p>" + esc(K.hours) + "</p></div>";
     }
 
+    // Business contact details for Google (home page only). Skipped while the
+    // sample details are still in, so placeholders never reach search results.
+    if (page === "home" && K.email && !/\.example$/i.test(K.email) && !/98000\s?00000/.test(K.phone || "") && !$("#org-contact-ld")) {
+      var ld = document.createElement("script");
+      ld.type = "application/ld+json";
+      ld.id = "org-contact-ld";
+      ld.textContent = JSON.stringify({
+        "@context": "https://schema.org", "@type": "ProfessionalService", "@id": "https://avspmc.avsllp.co/#org",
+        name: "AVSPMC", url: "https://avspmc.avsllp.co/", email: K.email, telephone: K.phoneLink || undefined,
+        address: K.hq && K.hq.address ? K.hq.address : undefined,
+        sameAs: K.linkedin ? [K.linkedin] : undefined,
+      }).replace(/</g, "\\u003c");
+      document.head.appendChild(ld);
+    }
+
     // Floating WhatsApp and Call buttons on phones.
     if (!$(".quick-contact") && (K.whatsapp || K.phoneLink) && page !== "contact") {
       var q = document.createElement("div");
@@ -312,49 +329,10 @@
 
   /* ---- Small helpers for the content pages ------------------------- */
   function param(name) { return new URLSearchParams(location.search).get(name) || ""; }
-  function prettyDate(iso) {
-    var d = new Date(iso + "T00:00:00");
-    return isNaN(d) ? "" : d.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
-  }
   function setMeta(title, description) {
     if (title) document.title = title + " | AVSPMC";
     var m = $('meta[name="description"]');
     if (m && description) m.setAttribute("content", description);
-  }
-  // A small, safe Markdown subset for articles: ## / ### headings,
-  // paragraphs, "- " and "1. " lists, **bold** and [links](url).
-  function inline(text) {
-    return esc(text)
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, label, url) {
-        var ok = /^(https:\/\/|mailto:|tel:|[a-z0-9-]+\.html|#)/i.test(url);
-        return ok ? '<a href="' + url + '"' + (/^https:/.test(url) ? ' rel="noopener" target="_blank"' : "") + ">" + label + "</a>" : label;
-      });
-  }
-  function markdown(src) {
-    var out = [], list = null;
-    function close() { if (list) { out.push("</" + list + ">"); list = null; } }
-    String(src || "").replace(/\r/g, "").split(/\n{2,}/).forEach(function (block) {
-      var lines = block.split("\n").filter(function (l) { return l.trim(); });
-      if (!lines.length) return;
-      if (/^###\s/.test(lines[0])) { close(); out.push("<h3>" + inline(lines[0].replace(/^###\s+/, "")) + "</h3>"); lines = lines.slice(1); }
-      else if (/^##\s/.test(lines[0])) { close(); out.push("<h2>" + inline(lines[0].replace(/^##\s+/, "")) + "</h2>"); lines = lines.slice(1); }
-      if (!lines.length) return;
-      var ul = lines.every(function (l) { return /^\s*[-*]\s+/.test(l); });
-      var ol = lines.every(function (l) { return /^\s*\d+\.\s+/.test(l); });
-      if (ul || ol) {
-        close();
-        list = ul ? "ul" : "ol";
-        out.push("<" + list + ">");
-        lines.forEach(function (l) { out.push("<li>" + inline(l.replace(/^\s*([-*]|\d+\.)\s+/, "")) + "</li>"); });
-        close();
-      } else {
-        close();
-        out.push("<p>" + inline(lines.join(" ")) + "</p>");
-      }
-    });
-    close();
-    return out.join("\n");
   }
   function money(n) {
     if (n >= 1e7) return "₹" + (n / 1e7).toFixed(n >= 1e9 ? 0 : 1).replace(/\.0$/, "") + " Cr";
@@ -380,116 +358,73 @@
     return ok ? { name: name, phone: phone, email: email } : null;
   }
 
-  /* ---- Case study page (case-study.html?p=<slug>) ------------------ */
+  /* ---- Case study page (case-study.html?p=<slug>) ------------------
+     Normally the server has already built the page (api/page.js), marked
+     with data-prerendered. Then this only adds the interactive parts. */
+  function enhanceCaseStudy(box) {
+    splitHeading($("h1", box));
+    watchFigures(box);
+    $all("[data-ba]", box).forEach(function (ba) {
+      var range = $("input", ba);
+      range.addEventListener("input", function () { ba.style.setProperty("--pos", range.value + "%"); });
+    });
+  }
   function setUpCaseStudy() {
     var box = $("[data-case-study]");
     if (!box || box.getAttribute("data-ready")) return;
     box.setAttribute("data-ready", "1");
     var slug = param("p");
-    var notFound = '<div class="wrap section"><h1>Case study not found</h1><p>We couldn\'t find that case study. <a class="text-link" href="projects.html">See all projects</a></p></div>';
-    if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = notFound; return; }
+    if (slug && box.getAttribute("data-prerendered") === slug) { enhanceCaseStudy(box); return; }
+    if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = R.notFound("case"); return; }
     api("projects?select=*&published=eq.true&case_study=eq.true&slug=eq." + encodeURIComponent(slug)).then(function (rows) {
       var p = rows[0];
-      if (!p) { box.innerHTML = notFound; return; }
-      setMeta(p.name + ", " + p.city, p.challenge.slice(0, 155));
-      var results = Array.isArray(p.results) ? p.results : [];
-      box.innerHTML =
-        '<section class="page-intro"><div class="wrap">' +
-          '<p class="crumb"><a href="index.html">Home</a> / <a href="projects.html">Projects</a> / Case study</p>' +
-          '<div class="intro-text"><h1>' + esc(p.name) + "</h1><p>" + esc(p.sector) + ", " + esc(p.city) + ". " + esc(p.scope) + "</p></div>" +
-        "</div></section>" +
-        (p.photo_url ? '<div class="wrap page-image"><img src="' + esc(p.photo_url) + '" alt="' + esc(p.name) + '"></div>' : "") +
-        '<section class="section"><div class="wrap">' +
-          '<dl class="case-facts">' +
-            "<div><dt>Client</dt><dd>" + esc(p.client) + "</dd></div>" +
-            "<div><dt>Area</dt><dd>" + esc(p.area) + "</dd></div>" +
-            "<div><dt>Project cost</dt><dd>" + esc(p.value) + "</dd></div>" +
-            "<div><dt>Status</dt><dd>" + esc(p.status === "Ongoing" ? "Ongoing, " + p.progress + "% complete" : "Completed") + "</dd></div>" +
-          "</dl>" +
-          '<div class="case-body">' +
-            "<div><h2>The challenge</h2><p>" + esc(p.challenge) + "</p></div>" +
-            "<div><h2>What we did</h2><p>" + esc(p.approach) + "</p></div>" +
-          "</div>" +
-          (p.before_url && p.after_url
-            ? '<h2 class="case-results-title">Before and after</h2>' +
-              '<div class="ba" data-ba>' +
-                '<img src="' + esc(p.after_url) + '" alt="' + esc(p.name) + ' after">' +
-                '<img class="ba-before" src="' + esc(p.before_url) + '" alt="' + esc(p.name) + ' before">' +
-                '<span class="ba-label before">Before</span><span class="ba-label after">After</span>' +
-                '<input type="range" min="0" max="100" value="50" aria-label="Drag to compare before and after">' +
-                '<span class="ba-line"></span><span class="ba-knob" aria-hidden="true">‹ ›</span>' +
-              '</div><p class="ba-caption">Drag the handle, or use the arrow keys, to compare.</p>'
-            : "") +
-          (results.length ? '<h2 class="case-results-title">Results</h2><dl class="figures case-results">' + results.map(function (r) {
-            return "<div><dt>" + esc(r.label) + "</dt><dd>" + esc(r.value) + "</dd></div>";
-          }).join("") + "</dl>" : "") +
-        "</div></section>" +
-        (p.quote ? '<section class="section surface"><div class="wrap"><figure class="testimonial"><blockquote><p>' + esc(p.quote) +
-          "</p></blockquote><figcaption><b>" + esc(p.quote_by) + "</b></figcaption></figure></div></section>" : "") +
-        '<section class="section"><div class="wrap closing"><div><h2>Planning something similar?</h2>' +
-          "<p>Tell us about your project and we will share how we would approach it.</p></div>" +
-          '<div><a class="btn" href="contact.html">Discuss your project</a></div></div></section>';
-      splitHeading($("h1", box));
-      watchFigures(box);
-      $all("[data-ba]", box).forEach(function (ba) {
-        var range = $("input", ba);
-        range.addEventListener("input", function () { ba.style.setProperty("--pos", range.value + "%"); });
-      });
-    }).catch(function () { box.innerHTML = notFound; });
+      if (!p) { box.innerHTML = R.notFound("case"); return; }
+      setMeta(p.name + ", " + p.city, String(p.challenge || "").slice(0, 155));
+      box.innerHTML = R.caseStudyMain(p);
+      enhanceCaseStudy(box);
+    }).catch(function () { box.innerHTML = R.notFound("case"); });
   }
 
   /* ---- Insights list and articles ---------------------------------- */
-  function postCard(p) {
-    var href = "article.html?p=" + encodeURIComponent(p.slug);
-    return '<article class="post-card">' +
-      (p.cover_url ? '<a href="' + href + '" tabindex="-1" aria-hidden="true"><img src="' + esc(p.cover_url) + '" alt="" loading="lazy"></a>' : "") +
-      '<p class="post-date">' + esc(prettyDate(p.published_at)) + "</p>" +
-      '<h2><a href="' + href + '">' + esc(p.title) + "</a></h2><p>" + esc(p.excerpt) + "</p>" +
-      '<a class="text-link" href="' + href + '">Read the article</a></article>';
-  }
   function setUpInsights() {
     $all("[data-posts]").forEach(function (el) {
       if (el.getAttribute("data-ready")) return;
       el.setAttribute("data-ready", "1");
       var limit = parseInt(el.getAttribute("data-posts"), 10) || 50;
       api("posts?select=slug,title,excerpt,cover_url,published_at&published=eq.true&order=published_at.desc&limit=" + limit).then(function (rows) {
-        el.innerHTML = rows.length ? rows.map(postCard).join("") : "<p>New articles are on their way.</p>";
+        el.innerHTML = rows.length ? rows.map(R.postCard).join("") : "<p>New articles are on their way.</p>";
       }).catch(function () { el.innerHTML = "<p>Articles couldn't be loaded just now. Please try again later.</p>"; });
     });
+  }
+  function enhanceArticle(box, slug) {
+    splitHeading($("h1", box));
+    if (!$(".reading-progress")) {
+      var bar = document.createElement("div");
+      bar.className = "reading-progress";
+      bar.setAttribute("aria-hidden", "true");
+      document.body.appendChild(bar);
+    }
+    var el = $("[data-more-posts]", box);
+    if (!el || el.getAttribute("data-ready")) return;
+    el.setAttribute("data-ready", "1");
+    api("posts?select=slug,title,excerpt,cover_url,published_at&published=eq.true&slug=neq." + encodeURIComponent(slug) + "&order=published_at.desc&limit=2").then(function (more) {
+      el.innerHTML = more.map(R.postCard).join("");
+    }).catch(function () {});
   }
   function setUpArticle() {
     var box = $("[data-article]");
     if (!box || box.getAttribute("data-ready")) return;
     box.setAttribute("data-ready", "1");
     var slug = param("p");
-    var notFound = '<div class="wrap section"><h1>Article not found</h1><p>We couldn\'t find that article. <a class="text-link" href="insights.html">See all insights</a></p></div>';
-    if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = notFound; return; }
+    if (slug && box.getAttribute("data-prerendered") === slug) { enhanceArticle(box, slug); return; }
+    if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = R.notFound("article"); return; }
     api("posts?select=*&published=eq.true&slug=eq." + encodeURIComponent(slug)).then(function (rows) {
       var p = rows[0];
-      if (!p) { box.innerHTML = notFound; return; }
+      if (!p) { box.innerHTML = R.notFound("article"); return; }
       setMeta(p.title, p.excerpt);
-      box.innerHTML =
-        '<section class="page-intro"><div class="wrap">' +
-          '<p class="crumb"><a href="index.html">Home</a> / <a href="insights.html">Insights</a></p>' +
-          '<h1 class="article-title">' + esc(p.title) + "</h1>" +
-          '<p class="post-date">' + esc(prettyDate(p.published_at)) + ", " + esc(p.author) + "</p>" +
-        "</div></section>" +
-        (p.cover_url ? '<div class="wrap page-image"><img src="' + esc(p.cover_url) + '" alt=""></div>' : "") +
-        '<section class="section"><div class="wrap"><div class="article-body">' + markdown(p.body) + "</div></div></section>" +
-        '<section class="section surface"><div class="wrap"><div class="head-row"><h2>More insights</h2><a class="text-link" href="insights.html">All insights</a></div>' +
-        '<div class="post-grid" data-more-posts></div></div></section>';
-      splitHeading($("h1", box));
-      if (!$(".reading-progress")) {
-        var bar = document.createElement("div");
-        bar.className = "reading-progress";
-        bar.setAttribute("aria-hidden", "true");
-        document.body.appendChild(bar);
-      }
-      api("posts?select=slug,title,excerpt,cover_url,published_at&published=eq.true&slug=neq." + encodeURIComponent(slug) + "&order=published_at.desc&limit=2").then(function (more) {
-        var el = $("[data-more-posts]");
-        if (el) el.innerHTML = more.map(postCard).join("");
-      }).catch(function () {});
-    }).catch(function () { box.innerHTML = notFound; });
+      box.innerHTML = R.articleMain(p);
+      enhanceArticle(box, slug);
+    }).catch(function () { box.innerHTML = R.notFound("article"); });
   }
 
   /* ---- Careers ------------------------------------------------------ */
@@ -727,7 +662,7 @@
   }
   function projectFigure(p, withFacts) {
     var href = p.caseStudy ? "case-study.html?p=" + encodeURIComponent(p.slug) : "";
-    var photo = p.photo ? '<img src="' + esc(p.photo) + '" alt="' + esc(p.name) + ", " + esc(p.city) + '" loading="lazy">' : "";
+    var photo = p.photo ? R.img(p.photo, p.name + ", " + p.city, { lazy: true, sizes: "(max-width: 760px) 100vw, 60vw" }) : "";
     var badge = href ? '<span class="cs-badge">Case study</span>' : "";
     return '<article class="project" data-sector="' + esc(p.sector) + '">' +
       (href ? '<a class="photo-frame project-photo-link" href="' + href + '" tabindex="-1" aria-hidden="true">' + photo + badge + "</a>"

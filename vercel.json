@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/case-study.html", "destination": "/api/page?kind=case" },
+    { "source": "/article.html", "destination": "/api/page?kind=article" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" }
+  ],
+  "redirects": [
+    { "source": "/templates/:path*", "destination": "/", "permanent": false }
+  ],
+  "functions": {
+    "api/page.js": { "includeFiles": "templates/**" }
+  },
+  "images": {
+    "sizes": [640, 960, 1280, 1920],
+    "formats": ["image/webp"],
+    "minimumCacheTTL": 2592000,
+    "remotePatterns": [
+      { "protocol": "https", "hostname": "ukymhlwtbbcyohilwtrm.supabase.co", "pathname": "/storage/v1/object/public/**" }
+    ]
+  }
+}

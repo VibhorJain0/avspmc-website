@@ -13,6 +13,13 @@
 //   ALERT_EMAIL_FROM optional, e.g. "AVSPMC Website <alerts@yourdomain>"
 //                    (needs a domain verified in Resend; otherwise the
 //                    default onboarding@resend.dev sender is used)
+//
+// Optional thank-you email to the person who filled in the form (only when
+// they gave an email address). Off until you set:
+//   AUTO_REPLY_FROM     e.g. "AVSPMC <hello@avsllp.co>" (domain verified in Resend)
+//   AUTO_REPLY_REPLY_TO optional, where their replies should go
+// To stop the form being used to email strangers, each address gets at most
+// one thank-you email a day.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const ADMIN_URL = "https://avspmc.avsllp.co/admin/";
@@ -113,5 +120,58 @@ Deno.serve(async (req) => {
     console.error("Resend error", res.status, detail);
     return json({ sent: false, status: res.status }, 502);
   }
-  return json({ sent: true });
+  let autoReply = "off";
+  try {
+    autoReply = await sendAutoReply(sb, key, e, source);
+  } catch (err) {
+    console.error("Auto-reply failed", err);
+    autoReply = "failed";
+  }
+  return json({ sent: true, autoReply });
 });
+
+// deno-lint-ignore no-explicit-any
+async function sendAutoReply(sb: any, key: string, e: any, source: string) {
+  const from = Deno.env.get("AUTO_REPLY_FROM");
+  const email = String(e.email || "").trim();
+  if (!from || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "off";
+
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count } = await sb.from("enquiries").select("id", { count: "exact", head: true })
+    .ilike("email", email).gte("created_at", since);
+  if ((count ?? 0) > 1) return "skipped: already sent today";
+
+  const first = String(e.name || "").trim().split(/\s+/)[0] || "there";
+  const what = String(e.message || "").replace(/^Downloaded: /, "");
+  // Each message is a list of paragraphs.
+  const [subject, body]: [string, string[]] = source.startsWith("resource:")
+    ? ["Your AVSPMC download", [
+        `Thanks for downloading ${what || "our guide"}. We hope it helps.`,
+        "If you'd like a second opinion on your project, budget or contractor bids, just reply to this email or call us. There's no charge for a first conversation.",
+      ]]
+    : source === "career"
+    ? ["We've received your application", [
+        "Thanks for applying to AVSPMC. We read every application and will contact you if your experience matches an open role.",
+      ]]
+    : ["We've received your enquiry", [
+        "Thanks for getting in touch with AVSPMC. One of our project managers will call you within one working day to understand your project.",
+        "If it helps, have your drawings, budget or contractor quotes to hand. Nothing is needed to get started.",
+      ]];
+
+  const paras = [`Dear ${first},`, ...body, "Regards,\nAVSPMC Project Management Consultants\nhttps://avspmc.avsllp.co"];
+  const text = paras.join("\n\n");
+  const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#1A1F27;max-width:560px">` +
+    paras.map((p) => `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, "<br>")}</p>`).join("") + `</div>`;
+  const replyTo = Deno.env.get("AUTO_REPLY_REPLY_TO");
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to: [email], subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}) }),
+  });
+  if (!res.ok) {
+    console.error("Resend auto-reply error", res.status, await res.text());
+    return "failed";
+  }
+  return "sent";
+}
