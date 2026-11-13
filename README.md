@@ -54,8 +54,18 @@ The key in `config.js` is Supabase's *publishable* key. It is designed to be pub
 
 ## Search, sharing and analytics
 
-- `sitemap.xml` and `robots.txt` tell Google which pages to index (the admin page is excluded).
+- `/sitemap.xml` is built live by `api/sitemap.js`: the fixed pages plus every published case
+  study and article, so new ones are listed automatically. `robots.txt` excludes the admin page.
   Submit `https://avspmc.avsllp.co/sitemap.xml` in Google Search Console.
+- Case study and article pages are built on the server by `api/page.js` (from `templates/` and
+  `assets/js/render.js`), so Google and link previews see the real title, text and photo.
+  Admin edits show up there within about 5 minutes.
+- Structured data for Google: business details on the home page, breadcrumbs on every page,
+  FAQ on the FAQ page, and article data on case studies and articles. Your phone, email and
+  address are added automatically once the sample contact details are replaced.
+- Photos: each built-in photo has WebP copies at 800 and 1600 px (`name-800.webp`,
+  `name-1600.webp`). If you add a new photo to `assets/img/photos/`, make the same two copies.
+  Photos uploaded in the admin page are resized automatically by Vercel.
 - Every page has share tags, so links on WhatsApp/LinkedIn show a title, description and
   `assets/img/share.jpg` (1200×630). Replace that image with one of your own projects when you can.
 - Visitor analytics: Vercel Web Analytics (cookieless). Turn it on once in Vercel → project
@@ -73,8 +83,12 @@ Every push to the `main` branch redeploys the site automatically.
 
 ```
 index.html  about.html  services.html  sectors.html  projects.html  contact.html  privacy.html
-sitemap.xml  robots.txt
+robots.txt  vercel.json (routes for the two server-built pages, sitemap and image resizing)
+api/page.js             builds case-study.html and article.html on the server
+api/sitemap.js          builds /sitemap.xml
+templates/              page shells for case-study.html and article.html
 admin/                  admin page (index.html, admin.js, admin.css)
+assets/js/render.js     case study / article / card HTML, shared by the browser and api/page.js
 assets/css/tokens.css   colours, fonts, spacing
 assets/css/site.css     layout and components
 assets/js/config.js     Supabase connection and sector list
