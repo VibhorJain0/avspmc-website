@@ -65,12 +65,15 @@ Deno.serve(async (req) => {
   ];
   let wa = String(e.phone || "").replace(/\D/g, "");
   if (wa.length === 10) wa = "91" + wa;
-  const isDownload = String(e.source || "").startsWith("resource:");
-  const intro = isDownload
-    ? "Someone downloaded a free resource from the AVSPMC website."
+  const source = String(e.source || "contact");
+  const isDownload = source.startsWith("resource:");
+  const intro = isDownload ? "Someone downloaded a free resource from the AVSPMC website."
+    : source === "estimator" ? "Someone used the cost estimator and asked for a call back."
+    : source === "career" ? "New job application from the AVSPMC website."
     : "New enquiry from the AVSPMC website.";
-  const subject = isDownload
-    ? `Download lead: ${e.name}, ${String(e.message || "").replace(/^Downloaded: /, "")}`
+  const subject = isDownload ? `Download lead: ${e.name}, ${String(e.message || "").replace(/^Downloaded: /, "")}`
+    : source === "estimator" ? `Estimator lead: ${e.name}, ${e.sector || "project"}${e.area ? ", " + e.area : ""}`
+    : source === "career" ? `Job application: ${e.name}, ${e.sector || "role not given"}`
     : `New enquiry: ${e.name}${e.sector ? ", " + e.sector : ""}${e.city ? ", " + e.city : ""}`;
 
   const html = `

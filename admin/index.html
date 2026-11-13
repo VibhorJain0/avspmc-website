@@ -61,6 +61,7 @@
       <nav class="tabs" role="tablist" aria-label="Admin sections">
         <button role="tab" type="button" data-tab="enquiries" aria-selected="true">Enquiries <span class="badge" id="new-count" hidden></span></button>
         <button role="tab" type="button" data-tab="projects" aria-selected="false">Projects</button>
+        <button role="tab" type="button" data-tab="insights" aria-selected="false">Insights</button>
         <button role="tab" type="button" data-tab="settings" aria-selected="false">Site content</button>
       </nav>
       <div class="who">
@@ -106,6 +107,20 @@
     </section>
 
     <!-- CMS: site settings -->
+    <!-- CMS: insights / articles -->
+    <section id="tab-insights" class="panel" role="tabpanel" hidden>
+      <div class="toolbar">
+        <p class="muted">Articles appear on the Insights page, newest first. Drafts stay hidden until you tick Published.</p>
+        <button class="btn" type="button" id="add-post">Write an article</button>
+      </div>
+      <div class="split">
+        <div id="post-list" class="cards"></div>
+        <aside id="post-editor" class="detail">
+          <p class="empty">Select an article to edit it, or write a new one.</p>
+        </aside>
+      </div>
+    </section>
+
     <section id="tab-settings" class="panel" role="tabpanel" hidden>
       <form id="settings-form" class="settings" novalidate>
         <fieldset>
@@ -132,6 +147,11 @@
             <label>Organisation<input name="t_org"></label>
           </div>
           <small>Leave the quote empty to hide the testimonial section.</small>
+        </fieldset>
+        <fieldset>
+          <legend>Job openings (Careers page)</legend>
+          <small>Up to six roles. Leave a role name empty to remove it. Applications arrive under Enquiries as "Job application".</small>
+          <div id="job-rows" class="job-rows"></div>
         </fieldset>
         <fieldset>
           <legend>Sample-content notice</legend>

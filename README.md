@@ -84,3 +84,14 @@ assets/img/photos/      photographs (stock, see CREDITS.md)
 REFERENCES.md           the 10 PMC sites used as reference
 CREDITS.md              photo sources and licence
 ```
+
+## Case studies, insights, careers, estimator, FAQ
+
+| Feature | Where it lives | How to change it |
+|---|---|---|
+| Case studies (`case-study.html?p=<address>`) | Each project in the database | Admin → Projects → a project → "Case study page" (tick the box, fill challenge, what we did, up to 3 results, optional quote) |
+| Insights / articles (`insights.html`, `article.html?p=<address>`) | `posts` table | Admin → Insights. Formatting: blank line between paragraphs, `##` heading, `-` bullet, `1.` numbered, `**bold**`, `[text](link)` |
+| Careers (`careers.html`) | `site_settings` → `jobs` | Admin → Site content → Job openings. Applications arrive in Enquiries as "Job application" |
+| Cost estimator (`estimator.html`) | `assets/js/config.js` → `estimator` | **The rates there are SAMPLE figures.** Replace them with AVSPMC's own ₹/sq ft ranges and fee percentages before promoting the tool. Call-back requests arrive in Enquiries as "Cost estimator" |
+| FAQ (`faq.html`) | The page itself | Edit both the visible answers and the matching JSON-LD block at the top (used by Google) |
+| Floating WhatsApp/Call bar | `assets/js/site.js` | Shown on phones only, using the WhatsApp and phone numbers from Site content |

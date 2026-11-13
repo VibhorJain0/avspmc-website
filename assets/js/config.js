@@ -50,6 +50,34 @@ window.AVS_CONFIG = {
     },
   ],
 
+  // Cost and fee estimator (estimator.html).
+  // SAMPLE RATES: placeholders for illustration only. Replace them with
+  // AVSPMC's own current figures before promoting the estimator.
+  // rates = construction cost in ₹ per sq ft of built-up area, [low, high],
+  // for a tier-1 city; the city factor scales them.
+  estimator: {
+    types: [
+      { id: "residential", label: "Residential tower or township", rates: { standard: [2200, 2800], premium: [2800, 3800], luxury: [3800, 5500] } },
+      { id: "private", label: "Private villa or house", rates: { standard: [2400, 3000], premium: [3000, 4200], luxury: [4200, 7000] } },
+      { id: "office", label: "Office building or IT park", rates: { standard: [2600, 3200], premium: [3200, 4200], luxury: [4200, 6000] } },
+      { id: "retail", label: "Retail or mixed use", rates: { standard: [2700, 3400], premium: [3400, 4500], luxury: [4500, 6500] } },
+      { id: "hotel", label: "Hotel or resort", rates: { standard: [3500, 4500], premium: [4500, 6500], luxury: [6500, 10000] } },
+      { id: "hospital", label: "Hospital or clinic", rates: { standard: [4000, 5000], premium: [5000, 7000], luxury: [7000, 10000] } },
+    ],
+    cities: [
+      { id: "metro", label: "Metro (Mumbai, Delhi NCR, Bengaluru, Chennai, Hyderabad, Pune, Kolkata)", factor: 1.15 },
+      { id: "tier1", label: "Other large city (state capitals, Ahmedabad, Indore, Jaipur, etc.)", factor: 1.0 },
+      { id: "tier2", label: "Smaller city or town", factor: 0.9 },
+    ],
+    specs: [
+      { id: "standard", label: "Standard" },
+      { id: "premium", label: "Premium" },
+      { id: "luxury", label: "Luxury" },
+    ],
+    // Full project management fee as a share of construction cost, [low, high].
+    pmcFee: [0.02, 0.04],
+  },
+
   // Sector names: used by the project filter, the contact form and the admin page.
   sectors: [
     "Residential",

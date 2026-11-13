@@ -50,6 +50,8 @@
       var r = (CFG.resources || []).filter(function (x) { return x.slug === slug; })[0];
       return "Download: " + (r ? r.title : slug);
     }
+    if (s === "estimator") return "Cost estimator";
+    if (s === "career") return "Job application";
     return s === "whatsapp" ? "Contact form, sent on WhatsApp" : "Contact form";
   }
   function isDownload(e) { return (e.source || "").indexOf("resource:") === 0; }
@@ -100,6 +102,7 @@
       watchEnquiries();
       loadProjects();
       loadSettings();
+      loadPosts();
     });
   }
   $("#login-form").addEventListener("submit", function (e) {
@@ -332,6 +335,46 @@
     renderProjectEditor();
   });
 
+  function slugify(s) {
+    return String(s || "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+  }
+  // Case-study fields inside the project editor.
+  function caseStudyFields(p) {
+    var r = Array.isArray(p.results) ? p.results.slice(0, 3) : [];
+    while (r.length < 3) r.push({ value: "", label: "" });
+    return '<fieldset class="sub-fieldset"><legend>Case study page</legend>' +
+      '<label class="check"><input type="checkbox" name="case_study"' + (p.case_study ? " checked" : "") + "> Publish a case-study page for this project</label>" +
+      '<label>Page address<input name="slug" value="' + esc(p.slug || "") + '" placeholder="e.g. riverside-residences-pune"><small>Lowercase words joined by hyphens. Left empty, it is made from the project name.' +
+        (p.slug ? ' Page: <a href="../case-study.html?p=' + esc(p.slug) + '" target="_blank" rel="noopener">view</a>' : "") + "</small></label>" +
+      '<label>The challenge<textarea name="challenge" rows="3" placeholder="What was the situation when you were brought in?">' + esc(p.challenge || "") + "</textarea></label>" +
+      '<label>What we did<textarea name="approach" rows="4" placeholder="How you ran the project">' + esc(p.approach || "") + "</textarea></label>" +
+      '<div class="results-rows">' + r.map(function (x, i) {
+        return '<div class="row"><label>Result ' + (i + 1) + '<input name="res_value_' + i + '" value="' + esc(x.value) + '" placeholder="₹6.2 Cr"></label>' +
+          '<label>What it means<input name="res_label_' + i + '" value="' + esc(x.label) + '" placeholder="saved through competitive tendering"></label></div>';
+      }).join("") + "</div>" +
+      '<label>Client quote (optional)<textarea name="cs_quote" rows="2">' + esc(p.quote || "") + "</textarea></label>" +
+      '<label>Quote by<input name="cs_quote_by" value="' + esc(p.quote_by || "") + '" placeholder="Director, Projects, residential developer"></label>' +
+      "</fieldset>";
+  }
+  function readCaseStudy(form, name) {
+    var slug = slugify(form.slug.value.trim() || name);
+    if (slug.length < 3) { toast("Give the case-study page an address of at least 3 characters.", true); form.slug.focus(); return null; }
+    var on = form.case_study.checked;
+    if (on && (!form.challenge.value.trim() || !form.approach.value.trim())) {
+      toast("Fill in the challenge and what you did, or untick the case-study box.", true);
+      form.challenge.focus();
+      return null;
+    }
+    return {
+      slug: slug, case_study: on,
+      challenge: form.challenge.value.trim(), approach: form.approach.value.trim(),
+      results: [0, 1, 2].map(function (i) {
+        return { value: form["res_value_" + i].value.trim(), label: form["res_label_" + i].value.trim() };
+      }).filter(function (x) { return x.value; }),
+      quote: form.cs_quote.value.trim(), quote_by: form.cs_quote_by.value.trim(),
+    };
+  }
+
   function renderProjectEditor() {
     var box = $("#project-editor");
     var isNew = state.projectId === "new";
@@ -367,6 +410,7 @@
           '<input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp">' +
           "<small>JPG, PNG or WebP, up to 5 MB. Landscape photos at least 1600 px wide look best.</small>" +
           '<input type="hidden" name="photo_url" value="' + esc(p.photo_url) + '"></div>' +
+        caseStudyFields(p) +
         '<div class="actions"><button class="btn" type="submit">' + (isNew ? "Add project" : "Save changes") + "</button>" +
         '<button class="btn btn-line" type="button" id="cancel-project">Cancel</button><span class="spacer"></span>' +
         (isNew ? "" : '<button class="btn btn-danger" type="button" id="delete-project">Delete</button>') + "</div>" +
@@ -404,6 +448,9 @@
         featured: form.featured.value, published: form.published.checked, photo_url: form.photo_url.value,
       };
       if (row.status === "Completed") row.progress = 100;
+      var cs = readCaseStudy(form, row.name);
+      if (!cs) return;
+      Object.assign(row, cs);
       var q = isNew ? sb.from("projects").insert(row).select() : sb.from("projects").update(row).eq("id", p.id).select();
       q.then(function (res) {
         if (res.error || !res.data.length) { toast("Couldn't save: " + (res.error ? res.error.message : "no access"), true); return; }
@@ -452,6 +499,17 @@
         return '<div class="row"><label>Figure ' + (i + 1) + '<input name="stat_value_' + i + '" value="' + esc(s.value) + '" placeholder="120+"></label>' +
           '<label>Description<input name="stat_label_' + i + '" value="' + esc(s.label) + '" placeholder="projects managed since 2012"></label></div>';
       }).join("");
+      var jobs = Array.isArray(settings.jobs) ? settings.jobs.slice(0, 6) : [];
+      while (jobs.length < 6) jobs.push({ title: "", location: "", experience: "", type: "Full time", summary: "" });
+      $("#job-rows").innerHTML = jobs.map(function (j, i) {
+        return '<div class="job-row"><div class="grid2">' +
+          '<label>Role ' + (i + 1) + '<input name="job_title_' + i + '" value="' + esc(j.title) + '" placeholder="Site Engineer, civil"></label>' +
+          '<label>Location<input name="job_location_' + i + '" value="' + esc(j.location) + '" placeholder="Pune"></label>' +
+          '<label>Experience<input name="job_exp_' + i + '" value="' + esc(j.experience) + '" placeholder="3 to 6 years"></label>' +
+          '<label>Type<input name="job_type_' + i + '" value="' + esc(j.type) + '" placeholder="Full time"></label>' +
+          '<label class="full">One-line description<input name="job_summary_' + i + '" value="' + esc(j.summary) + '"></label>' +
+          "</div></div>";
+      }).join("");
     });
   }
   $("#settings-form").addEventListener("submit", function (e) {
@@ -469,6 +527,13 @@
       { key: "stats", value: stats },
       { key: "testimonial", value: { quote: f.quote.value.trim(), name: f.t_name.value.trim(), org: f.t_org.value.trim() } },
       { key: "notice", value: { showSampleNotice: f.showSampleNotice.checked } },
+      { key: "jobs", value: [0, 1, 2, 3, 4, 5].map(function (i) {
+        return {
+          title: f["job_title_" + i].value.trim(), location: f["job_location_" + i].value.trim(),
+          experience: f["job_exp_" + i].value.trim(), type: f["job_type_" + i].value.trim(),
+          summary: f["job_summary_" + i].value.trim(),
+        };
+      }).filter(function (j) { return j.title; }) },
     ];
     btn.disabled = true;
     sb.from("site_settings").upsert(rows).select().then(function (res) {
@@ -478,4 +543,110 @@
       toast("Site content saved");
     });
   });
+
+  /* ---- CMS: insights (articles) ------------------------------------ */
+  var posts = [], postId = null;
+  function loadPosts() {
+    sb.from("posts").select("*").order("published_at", { ascending: false }).then(function (res) {
+      if (res.error) { toast("Couldn't load articles.", true); return; }
+      posts = res.data;
+      renderPostList();
+    });
+  }
+  function renderPostList() {
+    $("#post-list").innerHTML = posts.map(function (p) {
+      return '<button type="button" class="card' + (p.id === postId ? " selected" : "") + '" data-id="' + p.id + '">' +
+        (p.cover_url ? '<img src="' + esc(img(p.cover_url)) + '" alt="">' : '<span class="noimg"></span>') +
+        "<span><b>" + esc(p.title) + '</b><span class="sub">' + esc(p.published_at) + "</span></span>" +
+        '<span class="tags"><span>' + (p.published ? "Published" : "Draft") + "</span></span></button>";
+    }).join("") || '<p class="empty">No articles yet.</p>';
+  }
+  $("#post-list").addEventListener("click", function (e) {
+    var c = e.target.closest(".card");
+    if (!c) return;
+    postId = c.getAttribute("data-id");
+    renderPostList();
+    renderPostEditor();
+  });
+  $("#add-post").addEventListener("click", function () { postId = "new"; renderPostList(); renderPostEditor(); });
+
+  function renderPostEditor() {
+    var box = $("#post-editor");
+    var isNew = postId === "new";
+    var p = isNew
+      ? { title: "", slug: "", excerpt: "", body: "", cover_url: "", author: "AVSPMC", published: false, published_at: new Date().toISOString().slice(0, 10) }
+      : posts.filter(function (x) { return x.id === postId; })[0];
+    if (!p) { box.innerHTML = '<p class="empty">Select an article to edit it, or write a new one.</p>'; return; }
+    box.innerHTML =
+      "<h2>" + (isNew ? "New article" : esc(p.title)) + "</h2>" +
+      '<form id="post-form" class="form-stack" novalidate>' +
+        '<label>Title<input name="title" required value="' + esc(p.title) + '"></label>' +
+        '<label>Page address<input name="slug" value="' + esc(p.slug) + '" placeholder="made from the title if left empty"><small>' +
+          (p.slug && !isNew ? 'Page: <a href="../article.html?p=' + esc(p.slug) + '" target="_blank" rel="noopener">view</a>' : "Lowercase words joined by hyphens.") + "</small></label>" +
+        '<label>Summary<textarea name="excerpt" rows="2" maxlength="400" placeholder="One or two sentences shown on the Insights page">' + esc(p.excerpt) + "</textarea></label>" +
+        '<label>Article<textarea name="body" rows="16" class="mono">' + esc(p.body) + "</textarea>" +
+          "<small>Leave a blank line between paragraphs. ## starts a heading, - starts a bullet, 1. a numbered point, **bold**, [link text](https://…).</small></label>" +
+        '<div class="grid2">' +
+          '<label>Date<input name="published_at" type="date" value="' + esc(p.published_at) + '"></label>' +
+          '<label>Author<input name="author" value="' + esc(p.author) + '"></label>' +
+        "</div>" +
+        '<div class="photo-field"><label>Cover photo</label>' +
+          (p.cover_url ? '<img id="cover-preview" src="' + esc(img(p.cover_url)) + '" alt="">' : '<img id="cover-preview" alt="" hidden>') +
+          '<input type="file" id="cover-file" accept="image/jpeg,image/png,image/webp"><small>Landscape, up to 5 MB.</small>' +
+          '<input type="hidden" name="cover_url" value="' + esc(p.cover_url) + '"></div>' +
+        '<label class="check"><input type="checkbox" name="published"' + (p.published ? " checked" : "") + "> Published on the website</label>" +
+        '<div class="actions"><button class="btn" type="submit">' + (isNew ? "Save article" : "Save changes") + "</button>" +
+        '<button class="btn btn-line" type="button" id="cancel-post">Cancel</button><span class="spacer"></span>' +
+        (isNew ? "" : '<button class="btn btn-danger" type="button" id="delete-post">Delete</button>') + "</div>" +
+      "</form>";
+    var form = $("#post-form");
+    $("#cover-file").addEventListener("change", function (ev) {
+      var file = ev.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { toast("That photo is over 5 MB.", true); ev.target.value = ""; return; }
+      var path = "articles/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ((file.name.split(".").pop() || "jpg").toLowerCase());
+      toast("Uploading photo…");
+      sb.storage.from("project-photos").upload(path, file, { contentType: file.type }).then(function (res) {
+        if (res.error) { toast("Upload failed: " + res.error.message, true); return; }
+        var url = sb.storage.from("project-photos").getPublicUrl(path).data.publicUrl;
+        form.cover_url.value = url;
+        var prev = $("#cover-preview");
+        prev.src = url; prev.hidden = false;
+        toast("Photo uploaded. Save the article to keep it.");
+      });
+    });
+    $("#cancel-post").addEventListener("click", function () { postId = null; renderPostList(); renderPostEditor(); });
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var title = form.title.value.trim();
+      if (title.length < 3) { toast("Give the article a title.", true); form.title.focus(); return; }
+      var row = {
+        title: title, slug: slugify(form.slug.value.trim() || title), excerpt: form.excerpt.value.trim(),
+        body: form.body.value, cover_url: form.cover_url.value, author: form.author.value.trim() || "AVSPMC",
+        published: form.published.checked, published_at: form.published_at.value || new Date().toISOString().slice(0, 10),
+      };
+      if (row.slug.length < 3) { toast("The page address needs at least 3 characters.", true); return; }
+      var q = isNew ? sb.from("posts").insert(row).select() : sb.from("posts").update(row).eq("id", p.id).select();
+      q.then(function (res) {
+        if (res.error || !res.data.length) {
+          var msg = res.error && /duplicate/i.test(res.error.message) ? "Another article already uses that page address." : (res.error ? res.error.message : "no access");
+          toast("Couldn't save: " + msg, true);
+          return;
+        }
+        postId = res.data[0].id;
+        loadPosts();
+        toast(row.published ? "Article saved and published" : "Draft saved");
+        setTimeout(renderPostEditor, 400);
+      });
+    });
+    if (!isNew) armDelete($("#delete-post"), function () {
+      sb.from("posts").delete().eq("id", p.id).then(function (res) {
+        if (res.error) { toast("Couldn't delete.", true); return; }
+        postId = null;
+        loadPosts();
+        renderPostEditor();
+        toast("Article deleted");
+      });
+    });
+  }
 })();

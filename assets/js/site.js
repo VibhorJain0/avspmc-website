@@ -15,8 +15,16 @@
     { id: "services", href: "services.html", label: "Services" },
     { id: "sectors",  href: "sectors.html",  label: "Sectors" },
     { id: "projects", href: "projects.html", label: "Projects" },
+    { id: "insights", href: "insights.html", label: "Insights" },
     { id: "resources", href: "resources.html", label: "Resources" },
     { id: "contact",  href: "contact.html",  label: "Contact" },
+  ];
+  // Extra links shown in the footer only.
+  var MORE = [
+    { href: "estimator.html", label: "Cost estimator" },
+    { href: "faq.html", label: "FAQ" },
+    { href: "careers.html", label: "Careers" },
+    { href: "privacy.html", label: "Privacy policy" },
   ];
 
   function esc(s) {
@@ -71,8 +79,10 @@
           name: p.name, sector: p.sector, city: p.city, client: p.client, area: p.area,
           value: p.value, scope: p.scope, status: p.status, progress: p.progress,
           photo: p.photo_url, featured: p.featured === "lead" ? "lead" : p.featured === "yes",
+          slug: p.slug, caseStudy: !!(p.case_study && p.slug),
         };
       }),
+      jobs: Array.isArray(s.jobs) ? s.jobs : [],
       sectors: CFG.sectors || LOCAL.sectors || [],
     };
   }
@@ -139,7 +149,7 @@
           '<div class="footer-brand">' + logo(C, "logo-light") + "<p>" + esc(C.tagline) + "</p></div>" +
           '<nav class="footer-col" aria-label="Footer"><h2>Pages</h2><ul>' +
             '<li><a href="index.html">Home</a></li>' +
-            NAV.map(function (l) { return '<li><a href="' + l.href + '">' + l.label + "</a></li>"; }).join("") +
+            NAV.concat(MORE).map(function (l) { return '<li><a href="' + l.href + '">' + l.label + "</a></li>"; }).join("") +
           "</ul></nav>" +
           '<div class="footer-col"><h2>Contact</h2><ul>' +
             '<li><a href="tel:' + esc(K.phoneLink) + '">' + esc(K.phone) + "</a></li>" +
@@ -151,7 +161,20 @@
             "<p>" + esc(K.hq && K.hq.address) + "</p><p>" + esc(K.regions) + "</p></div>" +
         "</div>" +
         '<div class="wrap footer-base"><p>© ' + new Date().getFullYear() + " " + esc(C.legalName) + "</p>" +
-        '<p><a href="privacy.html">Privacy policy</a></p><p>' + esc(K.hours) + "</p></div>";
+        "<p>" + esc(K.hours) + "</p></div>";
+    }
+
+    // Floating WhatsApp and Call buttons on phones.
+    if (!$(".quick-contact") && (K.whatsapp || K.phoneLink) && page !== "contact") {
+      var q = document.createElement("div");
+      q.className = "quick-contact";
+      q.innerHTML =
+        (K.whatsapp ? '<a class="qc-whatsapp" href="https://wa.me/' + esc(K.whatsapp) + "?text=" +
+          encodeURIComponent("Hello AVSPMC, I'd like to discuss a building project.") +
+          '" target="_blank" rel="noopener">WhatsApp us</a>' : "") +
+        (K.phoneLink ? '<a class="qc-call" href="tel:' + esc(K.phoneLink) + '">Call</a>' : "");
+      document.body.appendChild(q);
+      document.body.classList.add("has-quick-contact");
     }
 
     $all("[data-fill]").forEach(function (el) {
@@ -184,6 +207,269 @@
     setUpFilter(S);
     setUpForm(S);
     setUpResources();
+    setUpCaseStudy();
+    setUpInsights();
+    setUpArticle();
+    setUpCareers(S);
+    setUpEstimator();
+  }
+
+  /* ---- Small helpers for the content pages ------------------------- */
+  function param(name) { return new URLSearchParams(location.search).get(name) || ""; }
+  function prettyDate(iso) {
+    var d = new Date(iso + "T00:00:00");
+    return isNaN(d) ? "" : d.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  }
+  function setMeta(title, description) {
+    if (title) document.title = title + " | AVSPMC";
+    var m = $('meta[name="description"]');
+    if (m && description) m.setAttribute("content", description);
+  }
+  // A small, safe Markdown subset for articles: ## / ### headings,
+  // paragraphs, "- " and "1. " lists, **bold** and [links](url).
+  function inline(text) {
+    return esc(text)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, label, url) {
+        var ok = /^(https:\/\/|mailto:|tel:|[a-z0-9-]+\.html|#)/i.test(url);
+        return ok ? '<a href="' + url + '"' + (/^https:/.test(url) ? ' rel="noopener" target="_blank"' : "") + ">" + label + "</a>" : label;
+      });
+  }
+  function markdown(src) {
+    var out = [], list = null;
+    function close() { if (list) { out.push("</" + list + ">"); list = null; } }
+    String(src || "").replace(/\r/g, "").split(/\n{2,}/).forEach(function (block) {
+      var lines = block.split("\n").filter(function (l) { return l.trim(); });
+      if (!lines.length) return;
+      if (/^###\s/.test(lines[0])) { close(); out.push("<h3>" + inline(lines[0].replace(/^###\s+/, "")) + "</h3>"); lines = lines.slice(1); }
+      else if (/^##\s/.test(lines[0])) { close(); out.push("<h2>" + inline(lines[0].replace(/^##\s+/, "")) + "</h2>"); lines = lines.slice(1); }
+      if (!lines.length) return;
+      var ul = lines.every(function (l) { return /^\s*[-*]\s+/.test(l); });
+      var ol = lines.every(function (l) { return /^\s*\d+\.\s+/.test(l); });
+      if (ul || ol) {
+        close();
+        list = ul ? "ul" : "ol";
+        out.push("<" + list + ">");
+        lines.forEach(function (l) { out.push("<li>" + inline(l.replace(/^\s*([-*]|\d+\.)\s+/, "")) + "</li>"); });
+        close();
+      } else {
+        close();
+        out.push("<p>" + inline(lines.join(" ")) + "</p>");
+      }
+    });
+    close();
+    return out.join("\n");
+  }
+  function money(n) {
+    if (n >= 1e7) return "₹" + (n / 1e7).toFixed(n >= 1e9 ? 0 : 1).replace(/\.0$/, "") + " Cr";
+    if (n >= 1e5) return "₹" + (n / 1e5).toFixed(1).replace(/\.0$/, "") + " lakh";
+    return "₹" + Math.round(n).toLocaleString("en-IN");
+  }
+  function validLead(form, prefix) {
+    var ok = true;
+    $all(".field-error", form).forEach(function (x) { x.textContent = ""; });
+    $all("[aria-invalid]", form).forEach(function (x) { x.removeAttribute("aria-invalid"); });
+    function fail(id, msg) {
+      var f = $("#" + id);
+      f.setAttribute("aria-invalid", "true");
+      $("#" + id + "-error").textContent = msg;
+      if (ok) f.focus();
+      ok = false;
+    }
+    var name = $("#" + prefix + "-name").value.trim(), phone = $("#" + prefix + "-phone").value.trim();
+    var emailEl = $("#" + prefix + "-email"), email = emailEl ? emailEl.value.trim() : "";
+    if (!name) fail(prefix + "-name", "Enter your name.");
+    if (!/^[+\d][\d\s-]{7,}$/.test(phone)) fail(prefix + "-phone", "Enter a phone number with at least 8 digits.");
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(prefix + "-email", "Check the email address, or leave it blank.");
+    return ok ? { name: name, phone: phone, email: email } : null;
+  }
+
+  /* ---- Case study page (case-study.html?p=<slug>) ------------------ */
+  function setUpCaseStudy() {
+    var box = $("[data-case-study]");
+    if (!box || box.getAttribute("data-ready")) return;
+    box.setAttribute("data-ready", "1");
+    var slug = param("p");
+    var notFound = '<div class="wrap section"><p>We couldn\'t find that case study. <a class="text-link" href="projects.html">See all projects</a></p></div>';
+    if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = notFound; return; }
+    api("projects?select=*&published=eq.true&case_study=eq.true&slug=eq." + encodeURIComponent(slug)).then(function (rows) {
+      var p = rows[0];
+      if (!p) { box.innerHTML = notFound; return; }
+      setMeta(p.name + ", " + p.city, p.challenge.slice(0, 155));
+      var results = Array.isArray(p.results) ? p.results : [];
+      box.innerHTML =
+        '<section class="page-intro"><div class="wrap">' +
+          '<p class="crumb"><a href="index.html">Home</a> / <a href="projects.html">Projects</a> / Case study</p>' +
+          '<div class="intro-text"><h1>' + esc(p.name) + "</h1><p>" + esc(p.sector) + ", " + esc(p.city) + ". " + esc(p.scope) + "</p></div>" +
+        "</div></section>" +
+        (p.photo_url ? '<div class="wrap page-image"><img src="' + esc(p.photo_url) + '" alt="' + esc(p.name) + '"></div>' : "") +
+        '<section class="section"><div class="wrap">' +
+          '<dl class="case-facts">' +
+            "<div><dt>Client</dt><dd>" + esc(p.client) + "</dd></div>" +
+            "<div><dt>Area</dt><dd>" + esc(p.area) + "</dd></div>" +
+            "<div><dt>Project cost</dt><dd>" + esc(p.value) + "</dd></div>" +
+            "<div><dt>Status</dt><dd>" + esc(p.status === "Ongoing" ? "Ongoing, " + p.progress + "% complete" : "Completed") + "</dd></div>" +
+          "</dl>" +
+          '<div class="case-body">' +
+            "<div><h2>The challenge</h2><p>" + esc(p.challenge) + "</p></div>" +
+            "<div><h2>What we did</h2><p>" + esc(p.approach) + "</p></div>" +
+          "</div>" +
+          (results.length ? '<h2 class="case-results-title">Results</h2><dl class="figures case-results">' + results.map(function (r) {
+            return "<div><dt>" + esc(r.label) + "</dt><dd>" + esc(r.value) + "</dd></div>";
+          }).join("") + "</dl>" : "") +
+        "</div></section>" +
+        (p.quote ? '<section class="section surface"><div class="wrap"><figure class="testimonial"><blockquote><p>' + esc(p.quote) +
+          "</p></blockquote><figcaption><b>" + esc(p.quote_by) + "</b></figcaption></figure></div></section>" : "") +
+        '<section class="section"><div class="wrap closing"><div><h2>Planning something similar?</h2>' +
+          "<p>Tell us about your project and we will share how we would approach it.</p></div>" +
+          '<div><a class="btn" href="contact.html">Discuss your project</a></div></div></section>';
+    }).catch(function () { box.innerHTML = notFound; });
+  }
+
+  /* ---- Insights list and articles ---------------------------------- */
+  function postCard(p) {
+    var href = "article.html?p=" + encodeURIComponent(p.slug);
+    return '<article class="post-card">' +
+      (p.cover_url ? '<a href="' + href + '" tabindex="-1" aria-hidden="true"><img src="' + esc(p.cover_url) + '" alt="" loading="lazy"></a>' : "") +
+      '<p class="post-date">' + esc(prettyDate(p.published_at)) + "</p>" +
+      '<h2><a href="' + href + '">' + esc(p.title) + "</a></h2><p>" + esc(p.excerpt) + "</p>" +
+      '<a class="text-link" href="' + href + '">Read the article</a></article>';
+  }
+  function setUpInsights() {
+    $all("[data-posts]").forEach(function (el) {
+      if (el.getAttribute("data-ready")) return;
+      el.setAttribute("data-ready", "1");
+      var limit = parseInt(el.getAttribute("data-posts"), 10) || 50;
+      api("posts?select=slug,title,excerpt,cover_url,published_at&published=eq.true&order=published_at.desc&limit=" + limit).then(function (rows) {
+        el.innerHTML = rows.length ? rows.map(postCard).join("") : "<p>New articles are on their way.</p>";
+      }).catch(function () { el.innerHTML = "<p>Articles couldn't be loaded just now. Please try again later.</p>"; });
+    });
+  }
+  function setUpArticle() {
+    var box = $("[data-article]");
+    if (!box || box.getAttribute("data-ready")) return;
+    box.setAttribute("data-ready", "1");
+    var slug = param("p");
+    var notFound = '<div class="wrap section"><p>We couldn\'t find that article. <a class="text-link" href="insights.html">See all insights</a></p></div>';
+    if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = notFound; return; }
+    api("posts?select=*&published=eq.true&slug=eq." + encodeURIComponent(slug)).then(function (rows) {
+      var p = rows[0];
+      if (!p) { box.innerHTML = notFound; return; }
+      setMeta(p.title, p.excerpt);
+      box.innerHTML =
+        '<section class="page-intro"><div class="wrap">' +
+          '<p class="crumb"><a href="index.html">Home</a> / <a href="insights.html">Insights</a></p>' +
+          '<h1 class="article-title">' + esc(p.title) + "</h1>" +
+          '<p class="post-date">' + esc(prettyDate(p.published_at)) + ", " + esc(p.author) + "</p>" +
+        "</div></section>" +
+        (p.cover_url ? '<div class="wrap page-image"><img src="' + esc(p.cover_url) + '" alt=""></div>' : "") +
+        '<section class="section"><div class="wrap"><div class="article-body">' + markdown(p.body) + "</div></div></section>" +
+        '<section class="section surface"><div class="wrap"><div class="head-row"><h2>More insights</h2><a class="text-link" href="insights.html">All insights</a></div>' +
+        '<div class="post-grid" data-more-posts></div></div></section>';
+      api("posts?select=slug,title,excerpt,cover_url,published_at&published=eq.true&slug=neq." + encodeURIComponent(slug) + "&order=published_at.desc&limit=2").then(function (more) {
+        var el = $("[data-more-posts]");
+        if (el) el.innerHTML = more.map(postCard).join("");
+      }).catch(function () {});
+    }).catch(function () { box.innerHTML = notFound; });
+  }
+
+  /* ---- Careers ------------------------------------------------------ */
+  function setUpCareers(S) {
+    var list = $("[data-jobs]");
+    if (!list || list.getAttribute("data-ready")) return;
+    list.setAttribute("data-ready", "1");
+    var jobs = S.jobs || [];
+    list.innerHTML = jobs.length ? jobs.map(function (j) {
+      return '<article class="job"><div><h3>' + esc(j.title) + "</h3><p>" + esc(j.summary) + "</p></div>" +
+        '<dl><div><dt>Location</dt><dd>' + esc(j.location) + "</dd></div><div><dt>Experience</dt><dd>" + esc(j.experience) +
+        "</dd></div><div><dt>Type</dt><dd>" + esc(j.type) + "</dd></div></dl></article>";
+    }).join("") : "<p>No open roles right now. Send us your details anyway and we'll keep them on file.</p>";
+    var role = $("#job-role");
+    jobs.forEach(function (j) { var o = document.createElement("option"); o.value = j.title; o.textContent = j.title + ", " + j.location; role.appendChild(o); });
+    var o2 = document.createElement("option"); o2.value = "Other / future roles"; o2.textContent = "Other / future roles"; role.appendChild(o2);
+
+    var form = $("#job-form"), status = $("#job-status"), btn = $("button[type=submit]", form);
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var v = validLead(form, "job");
+      if (!v) return;
+      var link = $("#job-link").value.trim();
+      if (link && !/^https:\/\//.test(link)) { $("#job-link").setAttribute("aria-invalid", "true"); $("#job-link-error").textContent = "Paste a full link starting with https://"; $("#job-link").focus(); return; }
+      if ($("#job-website").value) { form.reset(); status.hidden = false; status.textContent = "Thank you. We have received your application."; return; }
+      btn.disabled = true;
+      api("enquiries", { method: "POST", body: {
+        name: v.name, phone: v.phone, email: v.email, source: "career",
+        sector: role.value || "Not specified", city: $("#job-city").value.trim(),
+        stage: $("#job-exp").value.trim() ? $("#job-exp").value.trim() + " years experience" : "",
+        message: ($("#job-message").value.trim() || "Job application") + (link ? "\n\nCV / LinkedIn: " + link : ""),
+      } }).then(function () {
+        form.reset();
+        status.hidden = false;
+        status.textContent = "Thank you, " + v.name + ". We have received your application and will contact you if there's a fit.";
+        status.focus();
+      }).catch(function () {
+        status.hidden = false;
+        status.textContent = "We couldn't send your application just now. Please try again in a few minutes.";
+      }).then(function () { btn.disabled = false; });
+    });
+  }
+
+  /* ---- Cost and fee estimator -------------------------------------- */
+  function setUpEstimator() {
+    var form = $("#estimate-form");
+    var E = CFG.estimator;
+    if (!form || !E || form.getAttribute("data-ready")) return;
+    form.setAttribute("data-ready", "1");
+    function fill(sel, items) { items.forEach(function (it) { var o = document.createElement("option"); o.value = it.id; o.textContent = it.label; sel.appendChild(o); }); }
+    fill($("#est-type"), E.types); fill($("#est-city"), E.cities); fill($("#est-spec"), E.specs);
+    $("#est-spec").value = "premium";
+    var out = $("#estimate-result"), last = null;
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var area = parseFloat(String($("#est-area").value).replace(/[, ]/g, ""));
+      var err = $("#est-area-error");
+      err.textContent = "";
+      $("#est-area").removeAttribute("aria-invalid");
+      if (!(area >= 500 && area <= 5000000)) { err.textContent = "Enter a built-up area between 500 and 50,00,000 sq ft."; $("#est-area").setAttribute("aria-invalid", "true"); $("#est-area").focus(); return; }
+      var type = E.types.filter(function (t) { return t.id === $("#est-type").value; })[0];
+      var city = E.cities.filter(function (c) { return c.id === $("#est-city").value; })[0];
+      var spec = $("#est-spec").value;
+      var r = type.rates[spec];
+      var lo = r[0] * city.factor * area, hi = r[1] * city.factor * area;
+      var feeLo = lo * E.pmcFee[0], feeHi = hi * E.pmcFee[1];
+      last = { type: type.label, city: city.label, spec: spec, area: area, lo: lo, hi: hi, feeLo: feeLo, feeHi: feeHi };
+      $("#est-cost").textContent = money(lo) + " to " + money(hi);
+      $("#est-rate").textContent = "₹" + Math.round(r[0] * city.factor).toLocaleString("en-IN") + " to ₹" + Math.round(r[1] * city.factor).toLocaleString("en-IN") + " per sq ft";
+      $("#est-fee").textContent = money(feeLo) + " to " + money(feeHi);
+      out.hidden = false;
+      out.focus();
+    });
+
+    var lead = $("#estimate-lead"), status = $("#estimate-status"), btn = $("button[type=submit]", lead);
+    lead.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var v = validLead(lead, "el");
+      if (!v || !last) return;
+      if ($("#el-website").value) { lead.reset(); status.hidden = false; status.textContent = "Thank you. We will be in touch."; return; }
+      btn.disabled = true;
+      api("enquiries", { method: "POST", body: {
+        name: v.name, phone: v.phone, email: v.email, source: "estimator",
+        sector: last.type, city: last.city.split(" (")[0], area: Math.round(last.area).toLocaleString("en-IN") + " sq ft",
+        stage: "Used the cost estimator",
+        message: "Estimate shown: construction " + money(last.lo) + " to " + money(last.hi) + " (" + last.spec + "), PMC fee " +
+          money(last.feeLo) + " to " + money(last.feeHi) + ". Wants a detailed estimate." +
+          ($("#el-note").value.trim() ? "\n\n" + $("#el-note").value.trim() : ""),
+      } }).then(function () {
+        lead.reset();
+        status.hidden = false;
+        status.textContent = "Thank you, " + v.name + ". We'll call within one working day to understand your project and prepare a proper estimate.";
+        status.focus();
+      }).catch(function () {
+        status.hidden = false;
+        status.textContent = "We couldn't send this just now. Please call or WhatsApp us instead.";
+      }).then(function () { btn.disabled = false; });
+    });
   }
 
   /* ---- Free resources (download after a short form) ---------------- */
@@ -303,10 +589,13 @@
       : '<span class="status status-done">Completed</span>';
   }
   function projectFigure(p, withFacts) {
+    var href = p.caseStudy ? "case-study.html?p=" + encodeURIComponent(p.slug) : "";
+    var photo = p.photo ? '<img src="' + esc(p.photo) + '" alt="' + esc(p.name) + ", " + esc(p.city) + '" loading="lazy">' : "";
     return '<article class="project" data-sector="' + esc(p.sector) + '">' +
-      (p.photo ? '<img src="' + esc(p.photo) + '" alt="' + esc(p.name) + ", " + esc(p.city) + '" loading="lazy">' : "") +
+      (href ? '<a class="project-photo-link" href="' + href + '" tabindex="-1" aria-hidden="true">' + photo + "</a>" : photo) +
       '<div class="project-caption">' +
-        "<div><h3>" + esc(p.name) + "</h3><p>" + esc(p.sector) + ", " + esc(p.city) + "</p></div>" +
+        "<div><h3>" + (href ? '<a href="' + href + '">' + esc(p.name) + "</a>" : esc(p.name)) + "</h3><p>" + esc(p.sector) + ", " + esc(p.city) +
+        (href ? ' <a class="case-link" href="' + href + '">Read the case study</a>' : "") + "</p></div>" +
         '<div class="project-meta">' + statusLine(p) + (withFacts ? "" : esc(p.area)) + "</div>" +
       "</div>" +
       (withFacts

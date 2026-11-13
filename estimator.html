@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Construction Cost and PMC Fee Estimator | AVSPMC</title>
+  <meta name="description" content="Get a rough construction cost range and PMC fee for your building project in India in under a minute.">
+  <link rel="canonical" href="https://avspmc.avsllp.co/estimator.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AVSPMC">
+  <meta property="og:title" content="Construction Cost and PMC Fee Estimator | AVSPMC">
+  <meta property="og:description" content="Get a rough construction cost range and PMC fee for your building project in India in under a minute.">
+  <meta property="og:url" content="https://avspmc.avsllp.co/estimator.html">
+  <meta property="og:image" content="https://avspmc.avsllp.co/assets/img/share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="en_IN">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#16325C">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;600;700&family=Spectral:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body data-page="resources">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header id="site-header" class="site-header"></header>
+
+  <main id="main">
+    <section class="page-intro">
+      <div class="wrap">
+        <p class="crumb"><a href="index.html">Home</a> / <a href="resources.html">Resources</a> / Cost estimator</p>
+        <div class="intro-text">
+          <h1>Cost and fee estimator</h1>
+          <p>A rough range for construction cost and our project management fee, in under a minute. Good for a first budget conversation, not for signing contracts.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top: 0">
+      <div class="wrap estimator">
+        <form id="estimate-form" novalidate>
+          <div class="field"><label for="est-type">Type of building</label><select id="est-type"></select></div>
+          <div class="field"><label for="est-city">Where</label><select id="est-city"></select></div>
+          <div class="field"><label for="est-area">Built-up area (sq ft)</label><input id="est-area" inputmode="numeric" placeholder="e.g. 40,000" aria-describedby="est-area-error"><p class="field-error" id="est-area-error"></p></div>
+          <div class="field"><label for="est-spec">Specification</label><select id="est-spec"></select></div>
+          <div class="form-actions"><button class="btn" type="submit">Estimate</button></div>
+        </form>
+
+        <div id="estimate-result" class="estimate-result" tabindex="-1" aria-live="polite" hidden>
+          <dl>
+            <div><dt>Construction cost</dt><dd id="est-cost"></dd><p id="est-rate" class="est-sub"></p></div>
+            <div><dt>Our full PMC fee, roughly</dt><dd id="est-fee"></dd></div>
+          </dl>
+          <p class="est-note">Indicative ranges for planning only. Real costs depend on the design, soil, site access, materials and timing. Excludes land, approvals, interiors and GST.</p>
+
+          <form id="estimate-lead" class="estimate-lead" novalidate>
+            <h2>Want a proper estimate?</h2>
+            <p>Leave your number and we'll call within one working day.</p>
+            <div class="form-grid">
+              <div class="field"><label for="el-name">Your name</label><input id="el-name" autocomplete="name" required aria-describedby="el-name-error"><p class="field-error" id="el-name-error"></p></div>
+              <div class="field"><label for="el-phone">Phone</label><input id="el-phone" type="tel" inputmode="tel" autocomplete="tel" required aria-describedby="el-phone-error"><p class="field-error" id="el-phone-error"></p></div>
+              <div class="field full"><label for="el-email">Email <span class="hint">(optional)</span></label><input id="el-email" type="email" autocomplete="email" aria-describedby="el-email-error"><p class="field-error" id="el-email-error"></p></div>
+              <div class="field full"><label for="el-note">Anything else? <span class="hint">(optional)</span></label><input id="el-note" placeholder="Stage, timeline, what you need help with"></div>
+            </div>
+            <div class="hp" aria-hidden="true"><label for="el-website">Leave this empty</label><input id="el-website" tabindex="-1" autocomplete="off"></div>
+            <div class="form-actions"><button class="btn" type="submit">Call me back</button></div>
+            <p class="form-note">See our <a href="privacy.html">privacy policy</a>.</p>
+            <div id="estimate-status" class="form-status" role="status" tabindex="-1" hidden></div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer" class="site-footer"></footer>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/site-data.js"></script>
+  <script src="assets/js/site.js"></script>
+  <script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>
