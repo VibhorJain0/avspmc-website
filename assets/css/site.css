@@ -219,6 +219,14 @@ ul { padding-left: 1.15em; }
 .text-block p { font-size: var(--fs-md); line-height: 1.6; }
 @media (max-width: 800px) { .text-block { grid-template-columns: 1fr; } }
 
+/* ---- Legal text (privacy policy) ------------------------------------ */
+.legal { max-width: 760px; }
+.legal h2 { font-size: var(--fs-lg); margin: 48px 0 14px; }
+.legal h2:first-child { margin-top: 0; }
+.legal p, .legal li { line-height: 1.7; }
+.legal ul { margin: 0 0 1em; }
+.legal li { margin-bottom: 6px; }
+
 /* ---- Sectors page -------------------------------------------------- */
 .feature-row { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 32px clamp(32px, 6vw, 96px); align-items: center; padding: clamp(40px, 6vw, 80px) 0; }
 .feature-row:nth-child(even) > img { order: 2; }

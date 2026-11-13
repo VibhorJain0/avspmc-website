@@ -50,6 +50,16 @@ The key in `config.js` is Supabase's *publishable* key. It is designed to be pub
 2. Update contact details and figures under **Site content**.
 3. Edit the "How we started" story and Leadership names in `about.html`.
 4. Untick **Show the sample-content bar** under **Site content**.
+5. Have `privacy.html` reviewed by your legal adviser (it is written for India's DPDP Act, 2023).
+
+## Search, sharing and analytics
+
+- `sitemap.xml` and `robots.txt` tell Google which pages to index (the admin page is excluded).
+  Submit `https://avspms.avsllp.co/sitemap.xml` in Google Search Console.
+- Every page has share tags, so links on WhatsApp/LinkedIn show a title, description and
+  `assets/img/share.jpg` (1200×630). Replace that image with one of your own projects when you can.
+- Visitor analytics: Vercel Web Analytics (cookieless). Turn it on once in Vercel → project
+  **avspmc-website** → **Analytics** → **Enable**. The script is already on every page.
 
 ## Hosting setup (one time)
 
@@ -62,7 +72,8 @@ Every push to the `main` branch redeploys the site automatically.
 ## Files
 
 ```
-index.html  about.html  services.html  sectors.html  projects.html  contact.html
+index.html  about.html  services.html  sectors.html  projects.html  contact.html  privacy.html
+sitemap.xml  robots.txt
 admin/                  admin page (index.html, admin.js, admin.css)
 assets/css/tokens.css   colours, fonts, spacing
 assets/css/site.css     layout and components

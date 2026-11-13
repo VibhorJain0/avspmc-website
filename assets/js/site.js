@@ -149,7 +149,8 @@
           '<div class="footer-col"><h2>' + esc(K.hq && K.hq.label) + "</h2>" +
             "<p>" + esc(K.hq && K.hq.address) + "</p><p>" + esc(K.regions) + "</p></div>" +
         "</div>" +
-        '<div class="wrap footer-base"><p>© ' + new Date().getFullYear() + " " + esc(C.legalName) + "</p><p>" + esc(K.hours) + "</p></div>";
+        '<div class="wrap footer-base"><p>© ' + new Date().getFullYear() + " " + esc(C.legalName) + "</p>" +
+        '<p><a href="privacy.html">Privacy policy</a></p><p>' + esc(K.hours) + "</p></div>";
     }
 
     $all("[data-fill]").forEach(function (el) {
