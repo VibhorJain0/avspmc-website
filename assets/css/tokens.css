@@ -1,0 +1,48 @@
+/* =====================================================================
+   AVSPMC — DESIGN TOKENS
+   ---------------------------------------------------------------------
+   Change the brand here. Every colour, font and spacing value used on
+   the site comes from this file, so editing a value below updates all
+   six pages at once.
+
+   Colours are hex codes (#RRGGBB). Pick new ones at
+   https://htmlcolorcodes.com and paste them in.
+   ===================================================================== */
+
+:root {
+  /* ---- Brand colours ---------------------------------------------- */
+  --blue:        #16325C;  /* brand colour: logo, headings, buttons, footer */
+  --blue-deep:   #0E2240;  /* button hover, footer base                     */
+  --blue-soft:   #DCE3EE;  /* subtle tints, selected filter                 */
+
+  --ink:         #1A1F27;  /* body text                                     */
+  --muted:       #5D6573;  /* captions, secondary text                      */
+  --line:        #DFE2E7;  /* hairlines between items                       */
+  --surface:     #F2F3F5;  /* alternate section background                  */
+  --white:       #FFFFFF;  /* page background                               */
+
+  --on-track:    #2C6E4F;  /* "Completed"                                   */
+  --in-progress: #8A5A12;  /* "Ongoing"                                     */
+  --alert:       #B3261E;  /* form errors                                   */
+
+  /* ---- Fonts --------------------------------------------------------
+     To change fonts: pick new ones at fonts.google.com, replace the
+     <link> in the <head> of each page, then change the names here.  */
+  --font-serif: "Spectral", Georgia, "Times New Roman", serif;
+  --font-sans:  "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+
+  /* ---- Type scale ------------------------------------------------- */
+  --fs-xs:   0.8125rem;                          /* 13px */
+  --fs-sm:   0.9375rem;                          /* 15px */
+  --fs-base: 1.0625rem;                          /* 17px */
+  --fs-md:   1.25rem;                            /* 20px */
+  --fs-lg:   clamp(1.5rem, 1.3rem + 0.8vw, 1.875rem);
+  --fs-xl:   clamp(2rem, 1.5rem + 2vw, 3rem);
+  --fs-2xl:  clamp(2.5rem, 1.6rem + 3.6vw, 4.5rem);
+
+  /* ---- Spacing ---------------------------------------------------- */
+  --gutter:    clamp(16px, 5vw, 64px);
+  --max-width: 1320px;
+  --section-y: clamp(72px, 10vw, 152px);
+  --radius:    2px;
+}

@@ -1,0 +1,6 @@
+<!-- AVSPMC wordmark for use outside the website (letterheads, social media).
+     On the website itself the logo is drawn by assets/js/site.js from the
+     names in site-data.js. Change the hex colour if you change tokens.css. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 32" width="200" height="32">
+  <text x="0" y="24" font-family="'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif" font-size="22" letter-spacing="3.5" fill="#16325C"><tspan font-weight="700">AVS</tspan><tspan font-weight="300">PMC</tspan></text>
+</svg>

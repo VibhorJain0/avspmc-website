@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact | AVSPMC Project Management Consultants</title>
+  <meta name="description" content="Tell AVSPMC about your building project. We reply within one working day.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;600;700&family=Spectral:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body data-page="contact">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header id="site-header" class="site-header"></header>
+
+  <main id="main">
+    <section class="page-intro">
+      <div class="wrap">
+        <p class="crumb"><a href="index.html">Home</a> / Contact</p>
+        <div class="intro-text">
+          <h1>Tell us about your project</h1>
+          <p>A few details are enough to start. We reply within one working day, usually with a call to understand where things stand.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top: 0">
+      <div class="wrap contact-grid">
+        <form id="enquiry-form" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="f-name">Your name</label>
+              <input id="f-name" name="name" autocomplete="name" required aria-describedby="f-name-error">
+              <p class="field-error" id="f-name-error"></p>
+            </div>
+            <div class="field">
+              <label for="f-phone">Phone</label>
+              <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required aria-describedby="f-phone-error">
+              <p class="field-error" id="f-phone-error"></p>
+            </div>
+            <div class="field">
+              <label for="f-email">Email <span class="hint">(optional)</span></label>
+              <input id="f-email" name="email" type="email" autocomplete="email" aria-describedby="f-email-error">
+              <p class="field-error" id="f-email-error"></p>
+            </div>
+            <div class="field">
+              <label for="f-city">Project city</label>
+              <input id="f-city" name="city" autocomplete="address-level2">
+            </div>
+            <div class="field">
+              <label for="f-sector">Type of project</label>
+              <select id="f-sector" name="sector"><option value="">Choose one</option></select>
+            </div>
+            <div class="field">
+              <label for="f-area">Approximate built-up area <span class="hint">(optional)</span></label>
+              <input id="f-area" name="area" placeholder="e.g. 40,000 sq ft">
+            </div>
+            <div class="field full">
+              <label for="f-stage">Where is the project now?</label>
+              <select id="f-stage" name="stage">
+                <option value="">Choose one</option>
+                <option>Land bought, nothing designed yet</option>
+                <option>Design in progress</option>
+                <option>Waiting for approvals</option>
+                <option>Choosing contractors</option>
+                <option>Under construction</option>
+                <option>Delayed or over budget</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="f-message">About the project</label>
+              <textarea id="f-message" name="message" required aria-describedby="f-message-error" placeholder="What are you building, and what do you need help with?"></textarea>
+              <p class="field-error" id="f-message-error"></p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn" type="submit">Send by email</button>
+            <button class="btn btn-line" type="button" id="send-whatsapp">Send on WhatsApp</button>
+          </div>
+          <p class="form-note">Both buttons open your own email or WhatsApp app with the details filled in. Nothing is sent until you press send there.</p>
+          <div id="form-status" class="form-status" role="status" hidden></div>
+        </form>
+
+        <aside class="contact-aside" aria-labelledby="direct-title">
+          <h2 id="direct-title">Or contact us directly</h2>
+          <dl>
+            <div><dt>Phone</dt><dd><a data-href="phone" href="#" data-fill="contact.phone"></a></dd></div>
+            <div><dt>Email</dt><dd><a data-href="email" href="#" data-fill="contact.email"></a></dd></div>
+            <div><dt data-fill="contact.hq.label">Head office</dt><dd data-fill="contact.hq.address"></dd></div>
+            <div><dt>Where we work</dt><dd data-fill="contact.regions"></dd></div>
+            <div><dt>Office hours</dt><dd data-fill="contact.hours"></dd></div>
+          </dl>
+          <a class="btn btn-line" data-href="whatsapp" href="#" target="_blank" rel="noopener">Chat on WhatsApp</a>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer" class="site-footer"></footer>
+  <script src="assets/js/site-data.js"></script>
+  <script src="assets/js/site.js"></script>
+</body>
+</html>
