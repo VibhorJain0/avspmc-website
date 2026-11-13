@@ -86,6 +86,7 @@
       $("#user-email").textContent = user.email;
       show("app-view");
       loadEnquiries();
+      watchEnquiries();
       loadProjects();
       loadSettings();
     });
@@ -156,6 +157,39 @@
       renderEnquiries();
     });
   }
+  // Live alerts while the admin page is open.
+  var watching = false;
+  function watchEnquiries() {
+    if (watching) return;
+    watching = true;
+    sb.channel("new-enquiries")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "enquiries" }, function (payload) {
+        var e = payload.new;
+        if (state.enquiries.some(function (x) { return x.id === e.id; })) return;
+        state.enquiries.unshift(e);
+        renderEnquiries();
+        toast("New enquiry from " + e.name);
+        if (window.Notification && Notification.permission === "granted") {
+          var n = new Notification("New AVSPMC enquiry", {
+            body: e.name + (e.sector ? ", " + e.sector : "") + (e.city ? ", " + e.city : ""),
+            icon: "../assets/img/favicon.svg",
+          });
+          n.onclick = function () { window.focus(); state.enquiryId = e.id; renderEnquiries(); renderEnquiryDetail(); };
+        }
+      })
+      .subscribe();
+    var btn = $("#desktop-alerts");
+    if (window.Notification && Notification.permission === "default") {
+      btn.hidden = false;
+      btn.addEventListener("click", function () {
+        Notification.requestPermission().then(function (p) {
+          btn.hidden = true;
+          toast(p === "granted" ? "Desktop alerts on" : "Desktop alerts stay off (you can change this in browser settings)");
+        });
+      });
+    }
+  }
+
   function renderEnquiries() {
     var counts = { all: state.enquiries.length };
     STATUSES.forEach(function (s) { counts[s.id] = 0; });
@@ -163,6 +197,7 @@
     var badge = $("#new-count");
     badge.textContent = counts.new;
     badge.hidden = !counts.new;
+    document.title = (counts.new ? "(" + counts.new + ") " : "") + "Admin | AVSPMC";
 
     $("#status-filter").innerHTML = [{ id: "all", label: "All" }].concat(STATUSES).map(function (s) {
       return '<button type="button" data-status="' + s.id + '" aria-pressed="' + (state.filter === s.id) + '">' +
