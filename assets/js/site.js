@@ -83,6 +83,7 @@
         };
       }),
       jobs: Array.isArray(s.jobs) ? s.jobs : [],
+      clients: Array.isArray(s.clients) ? s.clients : [],
       sectors: CFG.sectors || LOCAL.sectors || [],
     };
   }
@@ -116,9 +117,31 @@
       NAV.map(function (l) {
         return '<li><a href="' + l.href + '"' + (l.id === page ? ' aria-current="page"' : "") + ">" + l.label + "</a></li>";
       }).join("") +
-      "</ul></nav></div>";
+      "</ul></nav>" +
+      '<button class="theme-toggle" type="button" aria-label="Switch to dark theme">' +
+        '<svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>' +
+        '<svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>' +
+      "</button></div>";
     var toggle = $(".nav-toggle", header);
     var nav = $("#site-nav", header);
+
+    // Light/dark theme: follows the device until the visitor picks one.
+    var themeBtn = $(".theme-toggle", header);
+    var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    function currentTheme() {
+      return document.documentElement.getAttribute("data-theme") || (systemDark && systemDark.matches ? "dark" : "light");
+    }
+    function labelTheme() {
+      themeBtn.setAttribute("aria-label", currentTheme() === "dark" ? "Switch to light theme" : "Switch to dark theme");
+    }
+    themeBtn.addEventListener("click", function () {
+      var next = currentTheme() === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("avspmc-theme", next); } catch (e) { /* not saved in private mode */ }
+      labelTheme();
+    });
+    if (systemDark && systemDark.addEventListener) systemDark.addEventListener("change", labelTheme);
+    labelTheme();
     toggle.addEventListener("click", function () {
       var open = toggle.getAttribute("aria-expanded") === "true";
       toggle.setAttribute("aria-expanded", String(!open));
@@ -279,6 +302,7 @@
     setUpFilter(S);
     setUpForm(S);
     setUpResources();
+    setUpClients(S);
     setUpCaseStudy();
     setUpInsights();
     setUpArticle();
@@ -386,6 +410,16 @@
             "<div><h2>The challenge</h2><p>" + esc(p.challenge) + "</p></div>" +
             "<div><h2>What we did</h2><p>" + esc(p.approach) + "</p></div>" +
           "</div>" +
+          (p.before_url && p.after_url
+            ? '<h2 class="case-results-title">Before and after</h2>' +
+              '<div class="ba" data-ba>' +
+                '<img src="' + esc(p.after_url) + '" alt="' + esc(p.name) + ' after">' +
+                '<img class="ba-before" src="' + esc(p.before_url) + '" alt="' + esc(p.name) + ' before">' +
+                '<span class="ba-label before">Before</span><span class="ba-label after">After</span>' +
+                '<input type="range" min="0" max="100" value="50" aria-label="Drag to compare before and after">' +
+                '<span class="ba-line"></span><span class="ba-knob" aria-hidden="true">‹ ›</span>' +
+              '</div><p class="ba-caption">Drag the handle, or use the arrow keys, to compare.</p>'
+            : "") +
           (results.length ? '<h2 class="case-results-title">Results</h2><dl class="figures case-results">' + results.map(function (r) {
             return "<div><dt>" + esc(r.label) + "</dt><dd>" + esc(r.value) + "</dd></div>";
           }).join("") + "</dl>" : "") +
@@ -397,6 +431,10 @@
           '<div><a class="btn" href="contact.html">Discuss your project</a></div></div></section>';
       splitHeading($("h1", box));
       watchFigures(box);
+      $all("[data-ba]", box).forEach(function (ba) {
+        var range = $("input", ba);
+        range.addEventListener("input", function () { ba.style.setProperty("--pos", range.value + "%"); });
+      });
     }).catch(function () { box.innerHTML = notFound; });
   }
 
@@ -576,6 +614,24 @@
       message: "Downloaded: " + res.title,
     } });
   }
+  // Client logos: a slow, pausable strip. Hidden until logos are added in the admin page.
+  function setUpClients(S) {
+    var box = $("[data-clients]");
+    if (!box || box.getAttribute("data-ready")) return;
+    box.setAttribute("data-ready", "1");
+    var list = (S.clients || []).filter(function (c) { return c && (c.logo_url || c.name); });
+    if (!list.length) { box.hidden = true; return; }
+    function item(c, hidden) {
+      return '<div class="client"' + (hidden ? ' aria-hidden="true"' : "") + ">" +
+        (c.logo_url ? '<img src="' + esc(c.logo_url) + '" alt="' + (hidden ? "" : esc(c.name)) + '" loading="lazy">' : "<span>" + esc(c.name) + "</span>") +
+        "</div>";
+    }
+    // The list is drawn twice so the loop is seamless; the copy is hidden from screen readers.
+    $(".marquee-track", box).innerHTML = list.map(function (c) { return item(c, false); }).join("") +
+      list.map(function (c) { return item(c, true); }).join("");
+    box.hidden = false;
+  }
+
   function setUpResources() {
     var list = CFG.resources || [];
     // Home page teaser: titles only.

@@ -26,6 +26,16 @@
   --alert:       #B3261E;  /* form errors                                   */
   --whatsapp:    #1F7A4D;  /* floating WhatsApp button on phones            */
 
+  /* Surfaces that change between light and dark mode */
+  --header-bg:     rgba(255, 255, 255, 0.96);
+  --badge-bg:      rgba(255, 255, 255, 0.94);
+  --footer-bg:     #16325C;
+  --footer-ink:    #DCE3EE;
+  --footer-strong: #FFFFFF;
+  --shadow:        rgba(14, 34, 64, 0.08);
+  --img-filter:    none;
+  color-scheme: light;
+
   /* ---- Fonts --------------------------------------------------------
      To change fonts: pick new ones at fonts.google.com, replace the
      <link> in the <head> of each page, then change the names here.  */
@@ -46,4 +56,55 @@
   --max-width: 1320px;
   --section-y: clamp(72px, 10vw, 152px);
   --radius:    2px;
+}
+
+/* =====================================================================
+   DARK MODE
+   Follows the visitor's device setting. The sun/moon button in the
+   header overrides it (saved per browser as data-theme on <html>).
+   Change dark colours here; components pick them up automatically.
+   ===================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --blue:        #A9C1EA;
+    --blue-deep:   #C9D8F2;
+    --blue-soft:   #1C2738;
+    --ink:         #E4E8EE;
+    --muted:       #A0A9B6;
+    --line:        #2A323E;
+    --surface:     #151B24;
+    --white:       #0E131A;
+    --on-track:    #6CC69A;
+    --in-progress: #E3B567;
+    --alert:       #FF8A80;
+    --header-bg:     rgba(14, 19, 26, 0.9);
+    --badge-bg:      rgba(14, 19, 26, 0.88);
+    --footer-bg:     #0A1220;
+    --footer-ink:    #A0A9B6;
+    --footer-strong: #E4E8EE;
+    --shadow:        rgba(0, 0, 0, 0.45);
+    --img-filter:    brightness(0.9);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --blue:        #A9C1EA;
+  --blue-deep:   #C9D8F2;
+  --blue-soft:   #1C2738;
+  --ink:         #E4E8EE;
+  --muted:       #A0A9B6;
+  --line:        #2A323E;
+  --surface:     #151B24;
+  --white:       #0E131A;
+  --on-track:    #6CC69A;
+  --in-progress: #E3B567;
+  --alert:       #FF8A80;
+  --header-bg:     rgba(14, 19, 26, 0.9);
+  --badge-bg:      rgba(14, 19, 26, 0.88);
+  --footer-bg:     #0A1220;
+  --footer-ink:    #A0A9B6;
+  --footer-strong: #E4E8EE;
+  --shadow:        rgba(0, 0, 0, 0.45);
+  --img-filter:    brightness(0.9);
+  color-scheme: dark;
 }

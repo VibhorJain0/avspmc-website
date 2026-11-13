@@ -95,3 +95,9 @@ CREDITS.md              photo sources and licence
 | Cost estimator (`estimator.html`) | `assets/js/config.js` → `estimator` | **The rates there are SAMPLE figures.** Replace them with AVSPMC's own ₹/sq ft ranges and fee percentages before promoting the tool. Call-back requests arrive in Enquiries as "Cost estimator" |
 | FAQ (`faq.html`) | The page itself | Edit both the visible answers and the matching JSON-LD block at the top (used by Google) |
 | Floating WhatsApp/Call bar | `assets/js/site.js` | Shown on phones only, using the WhatsApp and phone numbers from Site content |
+
+## Dark mode, before/after slider, client logos
+
+- **Dark mode** follows each visitor's device setting; the sun/moon button in the header switches it and the choice is remembered in that browser. Dark colours are the second block in `assets/css/tokens.css`. The admin page always stays light.
+- **Before/after slider**: Admin → Projects → a project → Case study page → upload a Before and an After photo (same spot and angle). The slider appears on that case study only when both are set.
+- **Client logos**: Admin → Site content → Client logos (up to 12, PNG with transparent background works best). The moving strip appears on the home page once at least one is saved. Only add clients who have agreed to be shown.

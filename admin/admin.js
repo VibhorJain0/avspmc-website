@@ -354,7 +354,37 @@
       }).join("") + "</div>" +
       '<label>Client quote (optional)<textarea name="cs_quote" rows="2">' + esc(p.quote || "") + "</textarea></label>" +
       '<label>Quote by<input name="cs_quote_by" value="' + esc(p.quote_by || "") + '" placeholder="Director, Projects, residential developer"></label>' +
+      '<div class="grid2">' +
+        photoSlot("before", "Before photo (optional)", p.before_url) +
+        photoSlot("after", "After photo (optional)", p.after_url) +
+      "</div>" +
+      "<small>Add both to show a before-and-after slider on the case study. Take them from the same spot and angle.</small>" +
       "</fieldset>";
+  }
+  function photoSlot(key, label, url) {
+    return '<div class="photo-field"><label>' + esc(label) + "</label>" +
+      '<img id="' + key + '-preview" src="' + esc(url ? img(url) : "") + '" alt=""' + (url ? "" : " hidden") + ">" +
+      '<input type="file" id="' + key + '-file" accept="image/jpeg,image/png,image/webp">' +
+      '<input type="hidden" name="' + key + '_url" value="' + esc(url || "") + '">' +
+      (url ? '<button type="button" class="linklike" data-clear="' + key + '">Remove</button>' : "") + "</div>";
+  }
+  // Upload a picked image to storage and put its public address in a hidden field.
+  function wireUpload(fileInput, hidden, preview, folder) {
+    fileInput.addEventListener("change", function () {
+      var file = fileInput.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { toast("That image is over 5 MB. Compress it and try again.", true); fileInput.value = ""; return; }
+      var ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      var path = (folder ? folder + "/" : "") + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+      toast("Uploading…");
+      sb.storage.from("project-photos").upload(path, file, { contentType: file.type }).then(function (res) {
+        if (res.error) { toast("Upload failed: " + res.error.message, true); return; }
+        var url = sb.storage.from("project-photos").getPublicUrl(path).data.publicUrl;
+        hidden.value = url;
+        if (preview) { preview.src = url; preview.hidden = false; }
+        toast("Uploaded. Remember to save.");
+      });
+    });
   }
   function readCaseStudy(form, name) {
     var slug = slugify(form.slug.value.trim() || name);
@@ -372,6 +402,7 @@
         return { value: form["res_value_" + i].value.trim(), label: form["res_label_" + i].value.trim() };
       }).filter(function (x) { return x.value; }),
       quote: form.cs_quote.value.trim(), quote_by: form.cs_quote_by.value.trim(),
+      before_url: form.before_url.value, after_url: form.after_url.value,
     };
   }
 
@@ -432,6 +463,18 @@
         prev.src = url;
         prev.hidden = false;
         toast("Photo uploaded. Save the project to keep it.");
+      });
+    });
+    ["before", "after"].forEach(function (k) {
+      wireUpload($("#" + k + "-file"), form[k + "_url"], $("#" + k + "-preview"), "before-after");
+    });
+    $all("[data-clear]", form).forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = b.getAttribute("data-clear");
+        form[k + "_url"].value = "";
+        $("#" + k + "-preview").hidden = true;
+        b.remove();
+        toast("Photo removed. Save to keep the change.");
       });
     });
     $("#cancel-project").addEventListener("click", function () { state.projectId = null; renderProjectList(); renderProjectEditor(); });
@@ -510,6 +553,19 @@
           '<label class="full">One-line description<input name="job_summary_' + i + '" value="' + esc(j.summary) + '"></label>' +
           "</div></div>";
       }).join("");
+      var clients = Array.isArray(settings.clients) ? settings.clients.slice(0, 12) : [];
+      while (clients.length < 12) clients.push({ name: "", logo_url: "" });
+      $("#client-rows").innerHTML = clients.map(function (c, i) {
+        return '<div class="client-row">' +
+          '<label>Client ' + (i + 1) + '<input name="client_name_' + i + '" value="' + esc(c.name) + '" placeholder="Company name"></label>' +
+          '<div class="client-logo"><img id="client-preview-' + i + '" src="' + esc(c.logo_url || "") + '" alt=""' + (c.logo_url ? "" : " hidden") + ">" +
+          '<input type="file" id="client-file-' + i + '" accept="image/png,image/webp,image/jpeg" aria-label="Logo for client ' + (i + 1) + '">' +
+          '<input type="hidden" name="client_logo_' + i + '" value="' + esc(c.logo_url || "") + '"></div></div>';
+      }).join("");
+      var sf = $("#settings-form");
+      for (var ci = 0; ci < 12; ci++) {
+        wireUpload($("#client-file-" + ci), sf["client_logo_" + ci], $("#client-preview-" + ci), "clients");
+      }
     });
   }
   $("#settings-form").addEventListener("submit", function (e) {
@@ -534,6 +590,9 @@
           summary: f["job_summary_" + i].value.trim(),
         };
       }).filter(function (j) { return j.title; }) },
+      { key: "clients", value: Array.from({ length: 12 }, function (_, i) {
+        return { name: f["client_name_" + i].value.trim(), logo_url: f["client_logo_" + i].value };
+      }).filter(function (c) { return c.name || c.logo_url; }) },
     ];
     btn.disabled = true;
     sb.from("site_settings").upsert(rows).select().then(function (res) {
