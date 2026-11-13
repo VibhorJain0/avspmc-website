@@ -386,7 +386,7 @@
     if (!box || box.getAttribute("data-ready")) return;
     box.setAttribute("data-ready", "1");
     var slug = param("p");
-    var notFound = '<div class="wrap section"><p>We couldn\'t find that case study. <a class="text-link" href="projects.html">See all projects</a></p></div>';
+    var notFound = '<div class="wrap section"><h1>Case study not found</h1><p>We couldn\'t find that case study. <a class="text-link" href="projects.html">See all projects</a></p></div>';
     if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = notFound; return; }
     api("projects?select=*&published=eq.true&case_study=eq.true&slug=eq." + encodeURIComponent(slug)).then(function (rows) {
       var p = rows[0];
@@ -462,7 +462,7 @@
     if (!box || box.getAttribute("data-ready")) return;
     box.setAttribute("data-ready", "1");
     var slug = param("p");
-    var notFound = '<div class="wrap section"><p>We couldn\'t find that article. <a class="text-link" href="insights.html">See all insights</a></p></div>';
+    var notFound = '<div class="wrap section"><h1>Article not found</h1><p>We couldn\'t find that article. <a class="text-link" href="insights.html">See all insights</a></p></div>';
     if (!/^[a-z0-9-]{3,80}$/.test(slug)) { box.innerHTML = notFound; return; }
     api("posts?select=*&published=eq.true&slug=eq." + encodeURIComponent(slug)).then(function (rows) {
       var p = rows[0];
