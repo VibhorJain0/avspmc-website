@@ -128,6 +128,77 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && nav.classList.contains("is-open")) { toggle.click(); toggle.focus(); }
     });
+
+    // Smart header: hide when scrolling down past the top, show when scrolling up.
+    var lastY = window.scrollY, ticking = false;
+    window.addEventListener("scroll", function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () {
+        var y = window.scrollY;
+        header.classList.toggle("is-scrolled", y > 8);
+        var open = nav.classList.contains("is-open");
+        var focused = header.contains(document.activeElement);
+        if (!open && !focused && y > 240 && y > lastY + 4) header.classList.add("is-hidden");
+        else if (y < lastY - 4 || y <= 240) header.classList.remove("is-hidden");
+        lastY = y;
+        ticking = false;
+      });
+    }, { passive: true });
+    header.addEventListener("focusin", function () { header.classList.remove("is-hidden"); });
+  }
+
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Headline rises in word by word. Text stays real text for search and screen readers.
+  function splitHeading(h) {
+    if (!h || reduceMotion || h.getAttribute("data-split") || h.children.length) return;
+    h.setAttribute("data-split", "1");
+    h.setAttribute("aria-label", h.textContent.trim());
+    var words = h.textContent.trim().split(/\s+/);
+    h.innerHTML = words.map(function (w, i) {
+      return '<span class="w" aria-hidden="true"><span style="--i:' + i + '">' + esc(w) + "</span></span>";
+    }).join(" ");
+    h.classList.add("split");
+  }
+  $all(".hero h1, .page-intro h1").forEach(splitHeading);
+
+  // Figures count up from zero when they scroll into view (keeps prefixes like ₹ and suffixes like + or Cr).
+  function countUp(el) {
+    if (reduceMotion || el.getAttribute("data-counted")) return;
+    var text = el.textContent.trim();
+    var m = text.match(/^([^\d]*)(\d[\d,]*(?:\.\d+)?)(.*)$/);
+    if (!m) return;
+    el.setAttribute("data-counted", "1");
+    var prefix = m[1], raw = m[2], suffix = m[3];
+    var target = parseFloat(raw.replace(/,/g, ""));
+    var decimals = (raw.split(".")[1] || "").length;
+    var grouped = raw.indexOf(",") > -1;
+    function fmt(v) {
+      var s = decimals ? v.toFixed(decimals) : String(Math.round(v));
+      if (grouped) s = Number(s).toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      return prefix + s + suffix;
+    }
+    el.style.fontVariantNumeric = "tabular-nums";
+    var start = null, dur = 1400;
+    function step(t) {
+      if (start === null) start = t;
+      var p = Math.min(1, (t - start) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = p < 1 ? fmt(target * eased) : text;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    el.textContent = fmt(0);
+    requestAnimationFrame(step);
+  }
+  var counterObserver = "IntersectionObserver" in window ? new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) { countUp(en.target); counterObserver.unobserve(en.target); }
+    });
+  }, { threshold: 0.6 }) : null;
+  function watchFigures(root) {
+    if (!counterObserver || reduceMotion) return;
+    $all(".figures dd", root).forEach(function (dd) { counterObserver.observe(dd); });
   }
 
   /* ---- Everything that depends on content ------------------------- */
@@ -193,6 +264,7 @@
       el.innerHTML = (S.stats || []).map(function (s) {
         return "<div><dt>" + esc(s.label) + "</dt><dd>" + esc(s.value) + "</dd></div>";
       }).join("");
+      watchFigures(el.parentNode);
     });
 
     $all("[data-testimonial]").forEach(function (el) {
@@ -323,6 +395,8 @@
         '<section class="section"><div class="wrap closing"><div><h2>Planning something similar?</h2>' +
           "<p>Tell us about your project and we will share how we would approach it.</p></div>" +
           '<div><a class="btn" href="contact.html">Discuss your project</a></div></div></section>';
+      splitHeading($("h1", box));
+      watchFigures(box);
     }).catch(function () { box.innerHTML = notFound; });
   }
 
@@ -366,6 +440,13 @@
         '<section class="section"><div class="wrap"><div class="article-body">' + markdown(p.body) + "</div></div></section>" +
         '<section class="section surface"><div class="wrap"><div class="head-row"><h2>More insights</h2><a class="text-link" href="insights.html">All insights</a></div>' +
         '<div class="post-grid" data-more-posts></div></div></section>';
+      splitHeading($("h1", box));
+      if (!$(".reading-progress")) {
+        var bar = document.createElement("div");
+        bar.className = "reading-progress";
+        bar.setAttribute("aria-hidden", "true");
+        document.body.appendChild(bar);
+      }
       api("posts?select=slug,title,excerpt,cover_url,published_at&published=eq.true&slug=neq." + encodeURIComponent(slug) + "&order=published_at.desc&limit=2").then(function (more) {
         var el = $("[data-more-posts]");
         if (el) el.innerHTML = more.map(postCard).join("");
@@ -591,8 +672,10 @@
   function projectFigure(p, withFacts) {
     var href = p.caseStudy ? "case-study.html?p=" + encodeURIComponent(p.slug) : "";
     var photo = p.photo ? '<img src="' + esc(p.photo) + '" alt="' + esc(p.name) + ", " + esc(p.city) + '" loading="lazy">' : "";
+    var badge = href ? '<span class="cs-badge">Case study</span>' : "";
     return '<article class="project" data-sector="' + esc(p.sector) + '">' +
-      (href ? '<a class="project-photo-link" href="' + href + '" tabindex="-1" aria-hidden="true">' + photo + "</a>" : photo) +
+      (href ? '<a class="photo-frame project-photo-link" href="' + href + '" tabindex="-1" aria-hidden="true">' + photo + badge + "</a>"
+            : '<div class="photo-frame">' + photo + "</div>") +
       '<div class="project-caption">' +
         "<div><h3>" + (href ? '<a href="' + href + '">' + esc(p.name) + "</a>" : esc(p.name)) + "</h3><p>" + esc(p.sector) + ", " + esc(p.city) +
         (href ? ' <a class="case-link" href="' + href + '">Read the case study</a>' : "") + "</p></div>" +

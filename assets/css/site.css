@@ -448,7 +448,90 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 @media (max-width: 860px) { .footer-grid { grid-template-columns: 1fr 1fr; } .footer-brand { grid-column: 1 / -1; } }
 @media (max-width: 480px) { .footer-grid { grid-template-columns: 1fr; } }
 
+/* =====================================================================
+   MODERN TOUCHES
+   Every effect below is progressive: browsers that don't support it,
+   and visitors who ask their device for reduced motion, get the plain
+   site. Nothing here hides content until JavaScript runs.
+   ===================================================================== */
+
+/* Smooth cross-fade between pages (Chrome, Edge; others load normally). */
+@view-transition { navigation: auto; }
+.site-header { view-transition-name: site-header; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .32s; }
+
+/* Smart header: tucks away on scroll down, returns on scroll up. */
+.site-header { transition: transform .35s cubic-bezier(.2, .7, .2, 1), box-shadow .3s ease; }
+.site-header.is-scrolled { box-shadow: 0 10px 30px rgba(14, 34, 64, 0.07); }
+.site-header.is-hidden { transform: translateY(-100%); }
+
+/* Headline rises in word by word (one moment per page). */
+.split .w { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: .12em; margin-bottom: -.12em; }
+.split .w > span { display: inline-block; transform: translateY(105%); animation: word-up .9s cubic-bezier(.2, .7, .2, 1) forwards; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
+@keyframes word-up { to { transform: none; } }
+.hero-intro > div { animation: fade-in .8s .55s both; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.hero-media .wide { animation: reveal 1.1s .18s cubic-bezier(.2, .7, .2, 1) both, settle-slow 2.4s .18s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes settle-slow { from { scale: 1.06; } to { scale: 1; } }
+
+/* Project photos: framed, gentle zoom on hover, case-study badge. */
+.photo-frame { position: relative; display: block; overflow: hidden; background: var(--surface); }
+.photo-frame img { transition: transform .9s cubic-bezier(.2, .7, .2, 1); }
+.project:hover .photo-frame img, .project:focus-within .photo-frame img { transform: scale(1.045); }
+.cs-badge { position: absolute; left: 14px; bottom: 14px; padding: 5px 11px; background: rgba(255, 255, 255, 0.94); color: var(--blue); font-size: var(--fs-xs); font-weight: 600; border-radius: 999px; pointer-events: none; }
+.post-card > a:first-child { display: block; overflow: hidden; margin-bottom: 18px; }
+.post-card > a:first-child img { margin: 0; transition: transform .9s cubic-bezier(.2, .7, .2, 1); }
+.post-card:hover > a:first-child img { transform: scale(1.045); }
+
+/* Buttons and links: crisper feedback. */
+.btn { transition: background-color .2s, color .2s, transform .15s ease; }
+.btn:active { transform: translateY(1px); }
+.text-link { transition: text-decoration-color .25s, color .2s; }
+
+/* Loading placeholders that shimmer instead of "Loading…". */
+.skeleton { background: linear-gradient(90deg, var(--surface) 0%, var(--line) 45%, var(--surface) 90%); background-size: 220% 100%; animation: shimmer 1.4s ease-in-out infinite; border-radius: 2px; }
+@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.sk-img { aspect-ratio: 3 / 2; margin-bottom: 18px; }
+.sk-hero { height: clamp(240px, 42vw, 560px); }
+.sk-line { height: 14px; margin: 10px 0; }
+.sk-title { height: 30px; width: 70%; margin: 12px 0 16px; }
+.sk-short { width: 45%; }
+
+/* Reading progress bar on articles (shown only where supported). */
+.reading-progress { display: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+/* Scroll-driven effects: CSS only, no JavaScript, no layout shift. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .page-image, .bleed { overflow: hidden; }
+    .page-image img, .bleed img, .work-feature .photo-frame img {
+      animation: settle linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 45%;
+    }
+    @keyframes settle { from { scale: 1.12; } to { scale: 1; } }
+
+    .stages li { position: relative; border-top-color: var(--line); }
+    .stages li::after {
+      content: ""; position: absolute; top: -1px; left: 0; right: 24px; height: 2px; background: var(--blue);
+      transform-origin: left center; animation: grow-x linear both; animation-timeline: view(); animation-range: entry 30% cover 50%;
+    }
+    @keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    .reading-progress {
+      display: block; position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 70; background: var(--blue);
+      transform-origin: left center; animation: grow-x linear both; animation-timeline: scroll(root);
+    }
+  }
+}
+
 /* ---- Reduced motion ------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  .split .w > span { transform: none !important; }
+  .site-header.is-hidden { transform: none; }
 }
