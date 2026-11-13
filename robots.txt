@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 
-Sitemap: https://avspms.avsllp.co/sitemap.xml
+Sitemap: https://avspmc.avsllp.co/sitemap.xml

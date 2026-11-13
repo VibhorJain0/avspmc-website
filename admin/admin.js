@@ -42,6 +42,17 @@
     return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ", " +
       d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
   }
+  // Where a lead came from, in words.
+  function sourceLabel(e) {
+    var s = e.source || "contact";
+    if (s.indexOf("resource:") === 0) {
+      var slug = s.slice(9);
+      var r = (CFG.resources || []).filter(function (x) { return x.slug === slug; })[0];
+      return "Download: " + (r ? r.title : slug);
+    }
+    return s === "whatsapp" ? "Contact form, sent on WhatsApp" : "Contact form";
+  }
+  function isDownload(e) { return (e.source || "").indexOf("resource:") === 0; }
   function img(url) { return !url ? "" : /^https?:\/\//.test(url) ? url : "../" + url; }
   function digits(s) { return String(s || "").replace(/\D/g, ""); }
 
@@ -168,7 +179,7 @@
         if (state.enquiries.some(function (x) { return x.id === e.id; })) return;
         state.enquiries.unshift(e);
         renderEnquiries();
-        toast("New enquiry from " + e.name);
+        toast((isDownload(e) ? "New download lead: " : "New enquiry from ") + e.name);
         if (window.Notification && Notification.permission === "granted") {
           var n = new Notification("New AVSPMC enquiry", {
             body: e.name + (e.sector ? ", " + e.sector : "") + (e.city ? ", " + e.city : ""),
@@ -208,13 +219,13 @@
     var rows = state.enquiries.filter(function (e) {
       if (state.filter !== "all" && e.status !== state.filter) return false;
       if (!q) return true;
-      return [e.name, e.phone, e.email, e.city, e.sector, e.message].join(" ").toLowerCase().indexOf(q) > -1;
+      return [e.name, e.phone, e.email, e.city, e.sector, e.message, sourceLabel(e)].join(" ").toLowerCase().indexOf(q) > -1;
     });
     $("#enquiry-rows").innerHTML = rows.map(function (e) {
       return '<tr data-id="' + e.id + '" class="' + (e.status === "new" ? "is-new " : "") + (e.id === state.enquiryId ? "selected" : "") + '">' +
         "<td>" + esc(when(e.created_at)) + "</td>" +
         "<td>" + esc(e.name) + '<span class="sub">' + esc(e.phone) + "</span></td>" +
-        "<td>" + esc(e.sector || "Not specified") + '<span class="sub">' + esc(e.city) + "</span></td>" +
+        "<td>" + esc(isDownload(e) ? sourceLabel(e) : (e.sector || "Not specified")) + '<span class="sub">' + esc(isDownload(e) ? "Resource download" : e.city) + "</span></td>" +
         "<td>" + pill(e.status) + "</td></tr>";
     }).join("");
     $("#enquiry-empty").hidden = rows.length > 0;
@@ -249,6 +260,7 @@
         (e.email ? '<a class="btn btn-line" href="mailto:' + esc(e.email) + '">Email</a>' : "") +
       "</div>" +
       "<dl>" +
+        "<dt>Came from</dt><dd>" + esc(sourceLabel(e)) + "</dd>" +
         "<dt>Phone</dt><dd>" + esc(e.phone) + "</dd>" +
         "<dt>Email</dt><dd>" + esc(e.email || "Not given") + "</dd>" +
         "<dt>Project type</dt><dd>" + esc(e.sector || "Not specified") + "</dd>" +

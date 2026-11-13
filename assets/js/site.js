@@ -15,6 +15,7 @@
     { id: "services", href: "services.html", label: "Services" },
     { id: "sectors",  href: "sectors.html",  label: "Sectors" },
     { id: "projects", href: "projects.html", label: "Projects" },
+    { id: "resources", href: "resources.html", label: "Resources" },
     { id: "contact",  href: "contact.html",  label: "Contact" },
   ];
 
@@ -182,6 +183,117 @@
     renderProjects(S);
     setUpFilter(S);
     setUpForm(S);
+    setUpResources();
+  }
+
+  /* ---- Free resources (download after a short form) ---------------- */
+  var VISITOR_KEY = "avspmc-visitor";
+  function rememberedVisitor() {
+    try { return JSON.parse(localStorage.getItem(VISITOR_KEY) || "null"); } catch (e) { return null; }
+  }
+  function rememberVisitor(v) {
+    try { localStorage.setItem(VISITOR_KEY, JSON.stringify(v)); } catch (e) { /* private mode: ask again next time */ }
+  }
+  function startDownload(res) {
+    var a = document.createElement("a");
+    a.href = res.file;
+    a.download = res.file.split("/").pop();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function logDownload(res, v) {
+    return api("enquiries", { method: "POST", body: {
+      name: v.name, phone: v.phone, email: v.email || "",
+      source: "resource:" + res.slug, stage: "Downloaded a resource",
+      message: "Downloaded: " + res.title,
+    } });
+  }
+  function setUpResources() {
+    var list = CFG.resources || [];
+    // Home page teaser: titles only.
+    $all("[data-resource-list]").forEach(function (el) {
+      el.innerHTML = list.map(function (r) {
+        return '<li><a href="resources.html#' + esc(r.slug) + '">' + esc(r.title) + "</a><span>" + esc(r.format) + "</span></li>";
+      }).join("");
+    });
+    var grid = $("[data-resources]");
+    if (!grid || grid.getAttribute("data-ready")) return;
+    grid.setAttribute("data-ready", "1");
+    grid.innerHTML = list.map(function (r) {
+      return '<article class="resource" id="' + esc(r.slug) + '">' +
+        '<p class="resource-kind"><b>' + esc(r.format) + "</b>, " + esc(r.size) + ". " + esc(r.audience) + "</p>" +
+        "<h2>" + esc(r.title) + "</h2><p>" + esc(r.description) + "</p>" +
+        "<ul>" + (r.points || []).map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>" +
+        '<button class="btn" type="button" data-download="' + esc(r.slug) + '">Download ' + esc(r.format) + "</button>" +
+        '<p class="resource-done" aria-live="polite"></p></article>';
+    }).join("");
+
+    var dialog = $("#download-dialog");
+    var form = $("#download-form");
+    var current = null;
+    function find(slug) { return list.filter(function (r) { return r.slug === slug; })[0]; }
+    function done(res) {
+      var card = document.getElementById(res.slug);
+      if (card) $(".resource-done", card).textContent = "Your download has started. Check your downloads folder.";
+    }
+
+    grid.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-download]");
+      if (!b) return;
+      var res = find(b.getAttribute("data-download"));
+      var known = rememberedVisitor();
+      if (known && known.name && known.phone) {
+        startDownload(res);
+        logDownload(res, known).catch(function () {});
+        done(res);
+        return;
+      }
+      current = res;
+      $("#dl-title").textContent = res.title;
+      $("#dl-format").textContent = res.format + ", " + res.size;
+      $all(".field-error", form).forEach(function (x) { x.textContent = ""; });
+      $all("[aria-invalid]", form).forEach(function (x) { x.removeAttribute("aria-invalid"); });
+      if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
+      $("#dl-name").focus();
+    });
+    $all("[data-close]", dialog).forEach(function (b) {
+      b.addEventListener("click", function () { dialog.close ? dialog.close() : dialog.removeAttribute("open"); });
+    });
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var v = { name: $("#dl-name").value.trim(), phone: $("#dl-phone").value.trim(), email: $("#dl-email").value.trim() };
+      var ok = true;
+      function fail(id, msg) {
+        var f = $("#" + id);
+        f.setAttribute("aria-invalid", "true");
+        $("#" + id + "-error").textContent = msg;
+        if (ok) f.focus();
+        ok = false;
+      }
+      $all(".field-error", form).forEach(function (x) { x.textContent = ""; });
+      $all("[aria-invalid]", form).forEach(function (x) { x.removeAttribute("aria-invalid"); });
+      if (!v.name) fail("dl-name", "Enter your name.");
+      if (!/^[+\d][\d\s-]{7,}$/.test(v.phone)) fail("dl-phone", "Enter a phone number with at least 8 digits.");
+      if (v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) fail("dl-email", "Check the email address, or leave it blank.");
+      if (!ok || !current) return;
+      var res = current;
+      if (!$("#dl-website").value) {
+        rememberVisitor(v);
+        logDownload(res, v).catch(function () {});
+      }
+      // The download never waits on the database.
+      startDownload(res);
+      dialog.close ? dialog.close() : dialog.removeAttribute("open");
+      done(res);
+    });
+
+    // Opened from a link like resources.html#project-health-check: highlight that card.
+    if (location.hash) {
+      var target = document.getElementById(location.hash.slice(1));
+      if (target) target.scrollIntoView();
+    }
   }
 
   /* ---- Projects --------------------------------------------------- */
@@ -317,7 +429,7 @@
       var f = fields();
       window.open("https://wa.me/" + K.whatsapp + "?text=" + encodeURIComponent("Project enquiry\n" + asText(f)), "_blank", "noopener");
       // Also keep a copy in the CRM, so WhatsApp enquiries aren't lost.
-      if (!val("f-website")) api("enquiries", { method: "POST", body: Object.assign({}, f, { stage: f.stage || "Sent on WhatsApp" }) }).catch(function () {});
+      if (!val("f-website")) api("enquiries", { method: "POST", body: Object.assign({}, f, { source: "whatsapp", stage: f.stage || "Sent on WhatsApp" }) }).catch(function () {});
     });
   }
 

@@ -15,7 +15,7 @@
 //                    default onboarding@resend.dev sender is used)
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
-const ADMIN_URL = "https://avspms.avsllp.co/admin/";
+const ADMIN_URL = "https://avspmc.avsllp.co/admin/";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -65,10 +65,17 @@ Deno.serve(async (req) => {
   ];
   let wa = String(e.phone || "").replace(/\D/g, "");
   if (wa.length === 10) wa = "91" + wa;
+  const isDownload = String(e.source || "").startsWith("resource:");
+  const intro = isDownload
+    ? "Someone downloaded a free resource from the AVSPMC website."
+    : "New enquiry from the AVSPMC website.";
+  const subject = isDownload
+    ? `Download lead: ${e.name}, ${String(e.message || "").replace(/^Downloaded: /, "")}`
+    : `New enquiry: ${e.name}${e.sector ? ", " + e.sector : ""}${e.city ? ", " + e.city : ""}`;
 
   const html = `
   <div style="font-family:Arial,sans-serif;font-size:15px;color:#1A1F27;max-width:560px">
-    <p style="margin:0 0 16px">New enquiry from the AVSPMC website.</p>
+    <p style="margin:0 0 16px">${intro}</p>
     <table style="border-collapse:collapse;width:100%">
       ${rows.map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#5D6573;white-space:nowrap;vertical-align:top">${esc(k)}</td><td style="padding:6px 0">${esc(v)}</td></tr>`).join("")}
     </table>
@@ -89,7 +96,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       from: Deno.env.get("ALERT_EMAIL_FROM") || "AVSPMC Website <onboarding@resend.dev>",
       to,
-      subject: `New enquiry: ${e.name}${e.sector ? ", " + e.sector : ""}${e.city ? ", " + e.city : ""}`,
+      subject,
       html,
       text,
       ...(e.email ? { reply_to: e.email } : {}),

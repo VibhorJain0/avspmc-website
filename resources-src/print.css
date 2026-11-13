@@ -1,0 +1,29 @@
+/* Print styles for AVSPMC downloadable guides (rendered to PDF with Edge). */
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=Spectral:wght@300;400;500&display=swap');
+@page { size: A4; margin: 18mm 18mm 20mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; font-family: 'Hanken Grotesk', Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1A1F27; }
+.brand { font-size: 11pt; letter-spacing: .16em; color: #16325C; }
+.brand b { font-weight: 700; }
+.cover { border-bottom: 2px solid #16325C; padding-bottom: 14pt; margin-bottom: 18pt; }
+.cover .kind { margin: 22pt 0 4pt; color: #5D6573; font-size: 10pt; }
+h1 { font-family: 'Spectral', Georgia, serif; font-weight: 300; color: #16325C; font-size: 28pt; line-height: 1.1; margin: 0 0 8pt; }
+.cover p { margin: 0; color: #5D6573; font-size: 11pt; max-width: 150mm; }
+h2 { font-family: 'Spectral', Georgia, serif; font-weight: 400; color: #16325C; font-size: 15pt; margin: 18pt 0 6pt; break-after: avoid; }
+h3 { font-size: 10.5pt; font-weight: 700; margin: 10pt 0 4pt; break-after: avoid; }
+p { margin: 0 0 6pt; }
+ul.check { list-style: none; padding: 0; margin: 0 0 6pt; }
+ul.check li { position: relative; padding: 3pt 0 3pt 18pt; border-bottom: 0.5pt solid #DFE2E7; break-inside: avoid; }
+ul.check li::before { content: ''; position: absolute; left: 0; top: 5pt; width: 9pt; height: 9pt; border: 1pt solid #16325C; border-radius: 1.5pt; }
+ul.check li small { display: block; color: #5D6573; font-size: 9pt; }
+ol, ul { margin: 0 0 6pt; padding-left: 14pt; }
+li { margin-bottom: 2pt; }
+table { width: 100%; border-collapse: collapse; margin: 4pt 0 8pt; font-size: 9.5pt; break-inside: avoid; }
+th { text-align: left; background: #DCE3EE; color: #0E2240; font-weight: 600; padding: 4pt 6pt; }
+td { padding: 4pt 6pt; border-bottom: 0.5pt solid #DFE2E7; vertical-align: top; }
+td.score { width: 26mm; color: #5D6573; white-space: nowrap; }
+.note { background: #F2F3F5; border-left: 2pt solid #16325C; padding: 6pt 9pt; margin: 8pt 0; break-inside: avoid; }
+.stage { break-inside: avoid-page; }
+.foot { margin-top: 18pt; padding-top: 8pt; border-top: 0.5pt solid #DFE2E7; color: #5D6573; font-size: 8.5pt; }
+.foot b { color: #16325C; }

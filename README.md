@@ -1,6 +1,6 @@
 # AVSPMC website
 
-The AVSPMC project management consultancy website, for **avspms.avsllp.co**.
+The AVSPMC project management consultancy website, for **avspmc.avsllp.co**.
 
 - **Website:** six static pages (HTML, CSS, JavaScript), hosted on Vercel from this GitHub repository.
 - **Admin (CMS + CRM):** `/admin/`, a password-protected page for enquiries, projects and site content.
@@ -8,7 +8,7 @@ The AVSPMC project management consultancy website, for **avspms.avsllp.co**.
 
 ## Day-to-day: use the admin page
 
-Go to `https://avspms.avsllp.co/admin/` and sign in.
+Go to `https://avspmc.avsllp.co/admin/` and sign in.
 
 | Tab | What you can do |
 |---|---|
@@ -55,7 +55,7 @@ The key in `config.js` is Supabase's *publishable* key. It is designed to be pub
 ## Search, sharing and analytics
 
 - `sitemap.xml` and `robots.txt` tell Google which pages to index (the admin page is excluded).
-  Submit `https://avspms.avsllp.co/sitemap.xml` in Google Search Console.
+  Submit `https://avspmc.avsllp.co/sitemap.xml` in Google Search Console.
 - Every page has share tags, so links on WhatsApp/LinkedIn show a title, description and
   `assets/img/share.jpg` (1200×630). Replace that image with one of your own projects when you can.
 - Visitor analytics: Vercel Web Analytics (cookieless). Turn it on once in Vercel → project
@@ -64,8 +64,8 @@ The key in `config.js` is Supabase's *publishable* key. It is designed to be pub
 ## Hosting setup (one time)
 
 1. **Vercel:** Add New → Project → import `VibhorJain0/avspmc-website`. Framework preset: *Other*. No build command.
-2. **Vercel → Settings → Domains:** add `avspms.avsllp.co`.
-3. **GoDaddy DNS** for avsllp.co: add a **CNAME** record, name `avspms`, value as shown by Vercel (usually `cname.vercel-dns.com`).
+2. **Vercel → Settings → Domains:** add `avspmc.avsllp.co`.
+3. **GoDaddy DNS** for avsllp.co: CNAME `avspmc` (and the old `avspms`) pointing to the value Vercel shows. `avspms.avsllp.co` redirects to `avspmc.avsllp.co`.
 
 Every push to the `main` branch redeploys the site automatically.
 
