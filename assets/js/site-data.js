@@ -1,6 +1,11 @@
 /* =====================================================================
    AVSPMC — SITE CONTENT
    ---------------------------------------------------------------------
+   NOTE: projects, contact details, figures and the testimonial are now
+   edited on the admin page (/admin/) and stored in Supabase. The copies
+   below are only a backup, used if Supabase cannot be reached.
+   The company name (logo text) below is still used directly.
+
    Edit the text between the quotes. Keep the quotes, commas and
    brackets as they are. Save the file and refresh the browser.
 

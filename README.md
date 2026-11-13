@@ -1,70 +1,75 @@
 # AVSPMC website
 
-A six-page static website (HTML, CSS, JavaScript). No build step, no database. Upload the whole
-folder to any web host (Netlify, Hostinger/cPanel, GitHub Pages) and it works.
+The AVSPMC project management consultancy website, for **avspms.avsllp.co**.
 
-To view it on your computer, double-click `index.html`.
+- **Website:** six static pages (HTML, CSS, JavaScript), hosted on Vercel from this GitHub repository.
+- **Admin (CMS + CRM):** `/admin/`, a password-protected page for enquiries, projects and site content.
+- **Database:** Supabase project **avspmc** (Mumbai region). Content and enquiries live there, not in this repository.
 
-## What to edit, and where
+## Day-to-day: use the admin page
+
+Go to `https://avspms.avsllp.co/admin/` and sign in.
+
+| Tab | What you can do |
+|---|---|
+| **Enquiries** (CRM) | See every contact-form enquiry, call/WhatsApp/email the person, move it through *New → Contacted → Proposal sent → Won / Lost*, and keep notes. |
+| **Projects** (CMS) | Add, edit, hide or delete projects, upload photos, and choose which ones appear on the home page. |
+| **Site content** (CMS) | Phone, WhatsApp, email, address, office hours, the four figures on the About page, the home-page testimonial, and the "sample content" notice. |
+
+Changes appear on the website immediately; no code changes or redeploys are needed.
+
+### Giving someone admin access
+
+1. In the Supabase dashboard for **avspmc**, open **Authentication → Users → Add user → Create new user**. Enter their email and a password, and tick **Auto Confirm User**.
+2. Copy the new user's **UID**, open **SQL Editor** and run:
+   ```sql
+   insert into public.admins (user_id) values ('PASTE-THE-UID-HERE');
+   ```
+
+Anyone signed in who is *not* in the `admins` table sees nothing: the database rules block them from enquiries and from editing.
+
+**Recommended:** in **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**, so accounts can only be created from the dashboard.
+
+## What still lives in the code
 
 | To change… | Edit this file |
 |---|---|
-| Company name (logo text), phone, email, WhatsApp, address | `assets/js/site-data.js` (top section) |
-| Figures (120+ projects, etc.) on the About page | `assets/js/site-data.js` → `stats` |
-| Projects on the Home and Projects pages | `assets/js/site-data.js` → `projects` |
-| The testimonial on the Home page | `assets/js/site-data.js` → `testimonials` |
+| Page text (headings, paragraphs, services, sectors) | the page's own `.html` file |
 | Colours and fonts | `assets/css/tokens.css` |
-| Page text (headings, paragraphs) | the page's own `.html` file |
-| Photos | replace files in `assets/img/photos/` (keep the same file names, or update the paths) |
-| Browser-tab titles and Google descriptions | `<title>` and `<meta name="description">` at the top of each `.html` file |
+| Logo text, company name, footer tagline | `assets/js/site-data.js` → `company` |
+| Sector names (filter, contact form, admin) | `assets/js/config.js` → `sectors` |
+| Supabase connection | `assets/js/config.js` |
 
-### Before going live
+`assets/js/site-data.js` also holds a **backup copy** of the projects and contact details. The site uses it only if Supabase can't be reached, so the pages never show up empty. It doesn't need to match the database exactly.
 
-1. Replace every item marked `SAMPLE` in `assets/js/site-data.js` with real details.
-2. Replace the project photos (`proj-*.jpg`) with photos of your own projects. The current ones
-   are stock photos (see `CREDITS.md`) and must not be presented as your work.
-3. Replace the "How we started" story, the figures and the Leadership names in `about.html`.
-4. Set `showSampleNotice: false` in `site-data.js` to remove the notice bar at the top.
-5. If you rename the company, also find-and-replace "AVSPMC" in the six `.html` files
-   (this updates the browser-tab titles and a few sentences).
+The key in `config.js` is Supabase's *publishable* key. It is designed to be public: the database's row-level security rules allow visitors only to read published content and submit enquiries.
 
-### Changing the logo
+## Before going live
 
-The logo is a wordmark: **AVS** in bold and PMC in light, spaced out, in the brand blue. The two
-parts come from `logoBold` and `logoLight` in `site-data.js`; the colour is `--blue` in `tokens.css`.
+1. Replace the sample projects and photos in the admin page with your real ones. The current photos are stock images (see `CREDITS.md`) and must not be presented as your work.
+2. Update contact details and figures under **Site content**.
+3. Edit the "How we started" story and Leadership names in `about.html`.
+4. Untick **Show the sample-content bar** under **Site content**.
 
-To use a logo image instead, put it in `assets/img/` and, in `assets/js/site.js`, change the
-`logo()` function to return
-`<a class="logo" href="index.html"><img src="assets/img/your-logo.svg" alt="AVSPMC" height="32"></a>`.
+## Hosting setup (one time)
 
-`assets/img/logo.svg` is a standalone copy for letterheads and social media.
+1. **Vercel:** Add New → Project → import `VibhorJain0/avspmc-website`. Framework preset: *Other*. No build command.
+2. **Vercel → Settings → Domains:** add `avspms.avsllp.co`.
+3. **GoDaddy DNS** for avsllp.co: add a **CNAME** record, name `avspms`, value as shown by Vercel (usually `cname.vercel-dns.com`).
 
-### Photos
-
-Good replacement photos are what will make this site feel real. For each project, one strong
-exterior photo in landscape format (at least 1600 px wide) is enough. Compress photos before
-uploading (for example with squoosh.app) so each is under about 400 KB.
-
-The home page's lead project uses `featured: "lead"` in `site-data.js`; the next two with
-`featured: true` appear below it.
-
-## How the contact form works
-
-There is no server. "Send by email" opens the visitor's email app with the enquiry filled in,
-addressed to the email in `site-data.js`. "Send on WhatsApp" opens WhatsApp with the same text.
-To receive submissions directly instead, sign up for a form service such as Formspree and point
-the form at it.
+Every push to the `main` branch redeploys the site automatically.
 
 ## Files
 
 ```
 index.html  about.html  services.html  sectors.html  projects.html  contact.html
+admin/                  admin page (index.html, admin.js, admin.css)
 assets/css/tokens.css   colours, fonts, spacing
 assets/css/site.css     layout and components
-assets/js/site-data.js  all editable content
-assets/js/site.js       header, footer, project lists, filter, form
+assets/js/config.js     Supabase connection and sector list
+assets/js/site.js       loads content, renders projects, filter, contact form
+assets/js/site-data.js  company name + offline backup of content
 assets/img/photos/      photographs (stock, see CREDITS.md)
-assets/img/             logo and favicon
 REFERENCES.md           the 10 PMC sites used as reference
 CREDITS.md              photo sources and licence
 ```

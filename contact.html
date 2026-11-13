@@ -76,12 +76,16 @@
               <p class="field-error" id="f-message-error"></p>
             </div>
           </div>
-          <div class="form-actions">
-            <button class="btn" type="submit">Send by email</button>
-            <button class="btn btn-line" type="button" id="send-whatsapp">Send on WhatsApp</button>
+          <div class="hp" aria-hidden="true">
+            <label for="f-website">Leave this empty</label>
+            <input id="f-website" name="website" tabindex="-1" autocomplete="off">
           </div>
-          <p class="form-note">Both buttons open your own email or WhatsApp app with the details filled in. Nothing is sent until you press send there.</p>
-          <div id="form-status" class="form-status" role="status" hidden></div>
+          <div class="form-actions">
+            <button class="btn" type="submit">Send enquiry</button>
+            <button class="btn btn-line" type="button" id="send-whatsapp">Send on WhatsApp instead</button>
+          </div>
+          <p class="form-note">We use these details only to reply to your enquiry.</p>
+          <div id="form-status" class="form-status" role="status" tabindex="-1" hidden></div>
         </form>
 
         <aside class="contact-aside" aria-labelledby="direct-title">
@@ -100,6 +104,7 @@
   </main>
 
   <footer id="site-footer" class="site-footer"></footer>
+  <script src="assets/js/config.js"></script>
   <script src="assets/js/site-data.js"></script>
   <script src="assets/js/site.js"></script>
 </body>

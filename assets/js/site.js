@@ -1,13 +1,13 @@
 /* =====================================================================
    AVSPMC — SITE BEHAVIOUR
-   You should not need to edit this file. Content lives in
-   site-data.js and colours/fonts in ../css/tokens.css.
+   Content comes from Supabase (edited on the admin page at /admin/).
+   If Supabase can't be reached, the site falls back to the copy in
+   site-data.js so it never shows empty. Colours/fonts: ../css/tokens.css.
    ===================================================================== */
 (function () {
   "use strict";
-  var S = window.SITE || {};
-  var C = S.company || {};
-  var K = S.contact || {};
+  var CFG = window.AVS_CONFIG || {};
+  var LOCAL = window.SITE || {};
   var page = document.body.getAttribute("data-page") || "";
 
   var NAV = [
@@ -26,33 +26,86 @@
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
-  /* ---- Logo (a wordmark drawn from site-data.js) ------------------ */
-  function logo(extraClass) {
+  /* ---- Supabase (plain REST, no library needed on the public site) -- */
+  function api(path, options) {
+    options = options || {};
+    var headers = { apikey: CFG.supabaseKey, Authorization: "Bearer " + CFG.supabaseKey };
+    if (options.body) { headers["Content-Type"] = "application/json"; headers.Prefer = "return=minimal"; }
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timer = ctrl && setTimeout(function () { ctrl.abort(); }, 5000);
+    return fetch(CFG.supabaseUrl + "/rest/v1/" + path, {
+      method: options.method || "GET",
+      headers: headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: ctrl ? ctrl.signal : undefined,
+    }).then(function (r) {
+      if (timer) clearTimeout(timer);
+      if (!r.ok) throw new Error("Supabase " + r.status);
+      return options.body ? null : r.json();
+    });
+  }
+
+  // Turns database rows into the same shape as site-data.js.
+  function fromDatabase(projects, settings) {
+    var s = {};
+    settings.forEach(function (row) { s[row.key] = row.value; });
+    var c = s.contact || {};
+    return {
+      showSampleNotice: !!(s.notice && s.notice.showSampleNotice),
+      company: LOCAL.company || {},
+      contact: {
+        email: c.email || "",
+        phone: c.phone || "",
+        phoneLink: (c.phone || "").replace(/[^\d+]/g, ""),
+        whatsapp: (c.whatsapp || "").replace(/\D/g, ""),
+        hours: c.hours || "",
+        hq: { label: "Head office", address: c.address || "" },
+        regions: c.regions || "",
+        linkedin: c.linkedin || "",
+      },
+      stats: s.stats || [],
+      testimonials: s.testimonial && s.testimonial.quote ? [s.testimonial] : [],
+      projects: projects.map(function (p) {
+        return {
+          name: p.name, sector: p.sector, city: p.city, client: p.client, area: p.area,
+          value: p.value, scope: p.scope, status: p.status, progress: p.progress,
+          photo: p.photo_url, featured: p.featured === "lead" ? "lead" : p.featured === "yes",
+        };
+      }),
+      sectors: CFG.sectors || LOCAL.sectors || [],
+    };
+  }
+
+  function loadContent() {
+    if (!CFG.supabaseUrl || !window.fetch) return Promise.resolve(LOCAL);
+    return Promise.all([
+      api("projects?select=*&published=eq.true&order=sort_order.asc,created_at.asc"),
+      api("site_settings?select=key,value"),
+    ]).then(function (res) {
+      return fromDatabase(res[0], res[1]);
+    }).catch(function () {
+      return LOCAL;
+    });
+  }
+
+  /* ---- Logo ------------------------------------------------------- */
+  function logo(C, extraClass) {
     var name = (C.logoBold || "") + (C.logoLight || "");
     return '<a class="logo ' + (extraClass || "") + '" href="index.html" aria-label="' + esc(name) + ', home">' +
       '<span class="logo-word"><b>' + esc(C.logoBold) + "</b><span>" + esc(C.logoLight) + "</span></span></a>";
   }
 
-  /* ---- Sample-content notice -------------------------------------- */
-  if (S.showSampleNotice) {
-    var n = document.createElement("div");
-    n.className = "sample-notice";
-    n.textContent = "Sample content: projects, figures and contact details are placeholders. Edit assets/js/site-data.js to replace them.";
-    document.body.insertBefore(n, document.body.firstChild);
-  }
-
-  /* ---- Header ----------------------------------------------------- */
+  /* ---- Header (drawn straight away, it doesn't need the database) -- */
   var header = $("#site-header");
   if (header) {
     header.innerHTML =
-      '<div class="wrap header-inner">' + logo() +
+      '<div class="wrap header-inner">' + logo(LOCAL.company || {}) +
       '<button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>' +
       '<nav id="site-nav" class="site-nav" aria-label="Main"><ul>' +
       NAV.map(function (l) {
         return '<li><a href="' + l.href + '"' + (l.id === page ? ' aria-current="page"' : "") + ">" + l.label + "</a></li>";
       }).join("") +
       "</ul></nav></div>";
-
     var toggle = $(".nav-toggle", header);
     var nav = $("#site-nav", header);
     toggle.addEventListener("click", function () {
@@ -66,55 +119,69 @@
     });
   }
 
-  /* ---- Footer ----------------------------------------------------- */
-  var footer = $("#site-footer");
-  if (footer) {
-    footer.innerHTML =
-      '<div class="wrap footer-grid">' +
-        '<div class="footer-brand">' + logo("logo-light") + "<p>" + esc(C.tagline) + "</p></div>" +
-        '<nav class="footer-col" aria-label="Footer"><h2>Pages</h2><ul>' +
-          '<li><a href="index.html">Home</a></li>' +
-          NAV.map(function (l) { return '<li><a href="' + l.href + '">' + l.label + "</a></li>"; }).join("") +
-        "</ul></nav>" +
-        '<div class="footer-col"><h2>Contact</h2><ul>' +
-          '<li><a href="tel:' + esc(K.phoneLink) + '">' + esc(K.phone) + "</a></li>" +
-          '<li><a href="mailto:' + esc(K.email) + '">' + esc(K.email) + "</a></li>" +
-          '<li><a href="https://wa.me/' + esc(K.whatsapp) + '" rel="noopener" target="_blank">WhatsApp</a></li>' +
-          (K.linkedin ? '<li><a href="' + esc(K.linkedin) + '" rel="noopener" target="_blank">LinkedIn</a></li>' : "") +
-        "</ul></div>" +
-        '<div class="footer-col"><h2>' + esc(K.hq && K.hq.label) + "</h2>" +
-          "<p>" + esc(K.hq && K.hq.address) + "</p><p>" + esc(K.regions) + "</p></div>" +
-      "</div>" +
-      '<div class="wrap footer-base"><p>© ' + new Date().getFullYear() + " " + esc(C.legalName) + "</p><p>" + esc(K.hours) + "</p></div>";
+  /* ---- Everything that depends on content ------------------------- */
+  function render(S) {
+    var C = S.company || {};
+    var K = S.contact || {};
+
+    if (S.showSampleNotice && !$(".sample-notice")) {
+      var n = document.createElement("div");
+      n.className = "sample-notice";
+      n.textContent = "Sample content: projects, figures and contact details are placeholders and will be replaced.";
+      document.body.insertBefore(n, document.body.firstChild);
+    }
+
+    var footer = $("#site-footer");
+    if (footer) {
+      footer.innerHTML =
+        '<div class="wrap footer-grid">' +
+          '<div class="footer-brand">' + logo(C, "logo-light") + "<p>" + esc(C.tagline) + "</p></div>" +
+          '<nav class="footer-col" aria-label="Footer"><h2>Pages</h2><ul>' +
+            '<li><a href="index.html">Home</a></li>' +
+            NAV.map(function (l) { return '<li><a href="' + l.href + '">' + l.label + "</a></li>"; }).join("") +
+          "</ul></nav>" +
+          '<div class="footer-col"><h2>Contact</h2><ul>' +
+            '<li><a href="tel:' + esc(K.phoneLink) + '">' + esc(K.phone) + "</a></li>" +
+            '<li><a href="mailto:' + esc(K.email) + '">' + esc(K.email) + "</a></li>" +
+            '<li><a href="https://wa.me/' + esc(K.whatsapp) + '" rel="noopener" target="_blank">WhatsApp</a></li>' +
+            (K.linkedin ? '<li><a href="' + esc(K.linkedin) + '" rel="noopener" target="_blank">LinkedIn</a></li>' : "") +
+          "</ul></div>" +
+          '<div class="footer-col"><h2>' + esc(K.hq && K.hq.label) + "</h2>" +
+            "<p>" + esc(K.hq && K.hq.address) + "</p><p>" + esc(K.regions) + "</p></div>" +
+        "</div>" +
+        '<div class="wrap footer-base"><p>© ' + new Date().getFullYear() + " " + esc(C.legalName) + "</p><p>" + esc(K.hours) + "</p></div>";
+    }
+
+    $all("[data-fill]").forEach(function (el) {
+      var v = S;
+      el.getAttribute("data-fill").split(".").forEach(function (p) { v = v == null ? v : v[p]; });
+      if (v != null) el.textContent = v;
+    });
+    $all("[data-href]").forEach(function (el) {
+      var t = el.getAttribute("data-href");
+      if (t === "email") el.href = "mailto:" + K.email;
+      if (t === "phone") el.href = "tel:" + K.phoneLink;
+      if (t === "whatsapp") el.href = "https://wa.me/" + K.whatsapp;
+    });
+
+    $all("[data-stats]").forEach(function (el) {
+      el.innerHTML = (S.stats || []).map(function (s) {
+        return "<div><dt>" + esc(s.label) + "</dt><dd>" + esc(s.value) + "</dd></div>";
+      }).join("");
+    });
+
+    $all("[data-testimonial]").forEach(function (el) {
+      var t = (S.testimonials || [])[0];
+      var section = el.closest("section");
+      if (!t) { if (section) section.hidden = true; return; }
+      el.innerHTML = "<blockquote><p>" + esc(t.quote) + "</p></blockquote>" +
+        "<figcaption><b>" + esc(t.name) + "</b>" + esc(t.org) + "</figcaption>";
+    });
+
+    renderProjects(S);
+    setUpFilter(S);
+    setUpForm(S);
   }
-
-  /* ---- Fill text slots: <span data-fill="contact.email"> ---------- */
-  $all("[data-fill]").forEach(function (el) {
-    var v = S;
-    el.getAttribute("data-fill").split(".").forEach(function (p) { v = v == null ? v : v[p]; });
-    if (v != null) el.textContent = v;
-  });
-  $all("[data-href]").forEach(function (el) {
-    var t = el.getAttribute("data-href");
-    if (t === "email") el.href = "mailto:" + K.email;
-    if (t === "phone") el.href = "tel:" + K.phoneLink;
-    if (t === "whatsapp") el.href = "https://wa.me/" + K.whatsapp;
-  });
-
-  /* ---- Figures ---------------------------------------------------- */
-  $all("[data-stats]").forEach(function (el) {
-    el.innerHTML = (S.stats || []).map(function (s) {
-      return "<div><dt>" + esc(s.label) + "</dt><dd>" + esc(s.value) + "</dd></div>";
-    }).join("");
-  });
-
-  /* ---- Testimonial ------------------------------------------------- */
-  $all("[data-testimonial]").forEach(function (el) {
-    var t = (S.testimonials || [])[0];
-    if (!t) { el.closest("section").hidden = true; return; }
-    el.innerHTML = "<blockquote><p>" + esc(t.quote) + "</p></blockquote>" +
-      "<figcaption><b>" + esc(t.name) + "</b>" + esc(t.org) + "</figcaption>";
-  });
 
   /* ---- Projects --------------------------------------------------- */
   function statusLine(p) {
@@ -124,7 +191,7 @@
   }
   function projectFigure(p, withFacts) {
     return '<article class="project" data-sector="' + esc(p.sector) + '">' +
-      '<img src="' + esc(p.photo) + '" alt="' + esc(p.name) + ", " + esc(p.city) + '" loading="lazy">' +
+      (p.photo ? '<img src="' + esc(p.photo) + '" alt="' + esc(p.name) + ", " + esc(p.city) + '" loading="lazy">' : "") +
       '<div class="project-caption">' +
         "<div><h3>" + esc(p.name) + "</h3><p>" + esc(p.sector) + ", " + esc(p.city) + "</p></div>" +
         '<div class="project-meta">' + statusLine(p) + (withFacts ? "" : esc(p.area)) + "</div>" +
@@ -139,19 +206,21 @@
         : "") +
       "</article>";
   }
-  var projects = S.projects || [];
-  $all("[data-projects]").forEach(function (el) {
-    var mode = el.getAttribute("data-projects");
-    var list;
-    if (mode === "lead") list = projects.filter(function (p) { return p.featured === "lead"; }).slice(0, 1);
-    else if (mode === "pair") list = projects.filter(function (p) { return p.featured === true; }).slice(0, 2);
-    else list = projects;
-    el.innerHTML = list.map(function (p) { return projectFigure(p, mode === "all"); }).join("");
-  });
+  function renderProjects(S) {
+    var projects = S.projects || [];
+    $all("[data-projects]").forEach(function (el) {
+      var mode = el.getAttribute("data-projects");
+      var list;
+      if (mode === "lead") list = projects.filter(function (p) { return p.featured === "lead"; }).slice(0, 1);
+      else if (mode === "pair") list = projects.filter(function (p) { return p.featured === true; }).slice(0, 2);
+      else list = projects;
+      el.innerHTML = list.map(function (p) { return projectFigure(p, mode === "all"); }).join("");
+    });
+  }
 
-  /* ---- Project filter (projects page) ----------------------------- */
-  var bar = $("#filter-bar");
-  if (bar) {
+  function setUpFilter(S) {
+    var bar = $("#filter-bar");
+    if (!bar) return;
     var current = new URLSearchParams(location.search).get("sector") || "";
     var options = [""].concat(S.sectors || []);
     bar.innerHTML = options.map(function (s) {
@@ -159,7 +228,6 @@
     }).join("") + '<p class="filter-count" aria-live="polite"></p>';
     var count = $(".filter-count", bar);
     function apply(value) {
-      current = value;
       $all("button", bar).forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-value") === value)); });
       var shown = 0;
       $all("[data-projects] .project").forEach(function (card) {
@@ -177,25 +245,29 @@
     apply(options.indexOf(current) > -1 ? current : "");
   }
 
-  /* ---- Contact form ----------------------------------------------- */
-  var form = $("#enquiry-form");
-  if (form) {
+  /* ---- Contact form: saves the enquiry to the CRM ------------------ */
+  function setUpForm(S) {
+    var form = $("#enquiry-form");
+    if (!form || form.getAttribute("data-ready")) return;
+    form.setAttribute("data-ready", "1");
+    var K = S.contact || {};
     var sectorField = $("#f-sector", form);
     (S.sectors || []).forEach(function (s) {
       var o = document.createElement("option"); o.value = s; o.textContent = s; sectorField.appendChild(o);
     });
     function val(id) { return ($("#" + id, form).value || "").trim(); }
-    function buildMessage() {
+    function fields() {
+      return {
+        name: val("f-name"), phone: val("f-phone"), email: val("f-email"), city: val("f-city"),
+        sector: val("f-sector"), area: val("f-area"), stage: val("f-stage"), message: val("f-message"),
+      };
+    }
+    function asText(f) {
       return [
-        "Name: " + val("f-name"),
-        "Phone: " + val("f-phone"),
-        "Email: " + (val("f-email") || "Not given"),
-        "Project type: " + (val("f-sector") || "Not specified"),
-        "City: " + (val("f-city") || "Not specified"),
-        "Approx. built-up area: " + (val("f-area") || "Not specified"),
-        "Current stage: " + (val("f-stage") || "Not specified"),
-        "",
-        val("f-message"),
+        "Name: " + f.name, "Phone: " + f.phone, "Email: " + (f.email || "Not given"),
+        "Project type: " + (f.sector || "Not specified"), "City: " + (f.city || "Not specified"),
+        "Approx. built-up area: " + (f.area || "Not specified"), "Current stage: " + (f.stage || "Not specified"),
+        "", f.message,
       ].join("\n");
     }
     function validate() {
@@ -216,17 +288,37 @@
       return ok;
     }
     var statusBox = $("#form-status");
+    var submit = $("button[type=submit]", form);
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       if (!validate()) return;
-      var subject = "Project enquiry: " + (val("f-sector") || "building project") + (val("f-city") ? " in " + val("f-city") : "");
-      location.href = "mailto:" + K.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(buildMessage());
-      statusBox.hidden = false;
-      statusBox.innerHTML = "Your email app should now be open with the enquiry filled in. Press send there. If nothing opened, write to <a href=\"mailto:" + esc(K.email) + "\">" + esc(K.email) + "</a>.";
+      var f = fields();
+      // Hidden field that only bots fill in.
+      if (val("f-website")) { form.reset(); statusBox.hidden = false; statusBox.textContent = "Thank you. We have received your enquiry."; return; }
+      submit.disabled = true;
+      submit.textContent = "Sending…";
+      api("enquiries", { method: "POST", body: f }).then(function () {
+        form.reset();
+        statusBox.hidden = false;
+        statusBox.textContent = "Thank you, " + f.name + ". We have received your enquiry and will reply within one working day.";
+        statusBox.focus();
+      }).catch(function () {
+        statusBox.hidden = false;
+        statusBox.innerHTML = "We couldn't send your enquiry just now. Please <a href=\"mailto:" + esc(K.email) + "?subject=" +
+          encodeURIComponent("Project enquiry") + "&body=" + encodeURIComponent(asText(f)) + "\">send it by email</a> or use WhatsApp instead.";
+      }).then(function () {
+        submit.disabled = false;
+        submit.textContent = "Send enquiry";
+      });
     });
     $("#send-whatsapp", form).addEventListener("click", function () {
       if (!validate()) return;
-      window.open("https://wa.me/" + K.whatsapp + "?text=" + encodeURIComponent("Project enquiry\n" + buildMessage()), "_blank", "noopener");
+      var f = fields();
+      window.open("https://wa.me/" + K.whatsapp + "?text=" + encodeURIComponent("Project enquiry\n" + asText(f)), "_blank", "noopener");
+      // Also keep a copy in the CRM, so WhatsApp enquiries aren't lost.
+      if (!val("f-website")) api("enquiries", { method: "POST", body: Object.assign({}, f, { stage: f.stage || "Sent on WhatsApp" }) }).catch(function () {});
     });
   }
+
+  loadContent().then(render);
 })();

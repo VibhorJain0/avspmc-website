@@ -288,6 +288,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .field-error:empty { display: none; }
 .form-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
 .form-note { font-size: var(--fs-sm); color: var(--muted); margin-top: 16px; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .form-status { margin-top: 20px; padding: 16px 18px; background: var(--surface); border-left: 2px solid var(--on-track); }
 .contact-aside h2 { font-size: var(--fs-lg); margin-bottom: 20px; }
 .contact-aside dl { margin: 0; border-top: 1px solid var(--line); }

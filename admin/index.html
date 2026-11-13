@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin | AVSPMC</title>
+  <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;600;700&family=Spectral:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="../assets/css/tokens.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <!-- Sign in -->
+  <main id="login-view" class="login" hidden>
+    <form id="login-form" class="login-card" novalidate>
+      <p class="brand"><b>AVS</b>PMC <span>Admin</span></p>
+      <h1>Sign in</h1>
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" autocomplete="username" required>
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" autocomplete="current-password" required>
+      <p id="login-error" class="error" role="alert"></p>
+      <button class="btn" type="submit">Sign in</button>
+      <p class="hint"><a href="../index.html">Back to the website</a></p>
+    </form>
+  </main>
+
+  <!-- Signed in but not an admin -->
+  <main id="denied-view" class="login" hidden>
+    <div class="login-card">
+      <p class="brand"><b>AVS</b>PMC <span>Admin</span></p>
+      <h1>No admin access</h1>
+      <p>You're signed in as <b id="denied-email"></b>, but this account hasn't been given admin access yet.</p>
+      <button class="btn btn-line" type="button" data-signout>Sign out</button>
+    </div>
+  </main>
+
+  <!-- Admin app -->
+  <div id="app-view" hidden>
+    <header class="topbar">
+      <p class="brand"><b>AVS</b>PMC <span>Admin</span></p>
+      <nav class="tabs" role="tablist" aria-label="Admin sections">
+        <button role="tab" type="button" data-tab="enquiries" aria-selected="true">Enquiries <span class="badge" id="new-count" hidden></span></button>
+        <button role="tab" type="button" data-tab="projects" aria-selected="false">Projects</button>
+        <button role="tab" type="button" data-tab="settings" aria-selected="false">Site content</button>
+      </nav>
+      <div class="who">
+        <span id="user-email"></span>
+        <a href="../index.html" target="_blank" rel="noopener">View site</a>
+        <button type="button" class="linklike" data-signout>Sign out</button>
+      </div>
+    </header>
+
+    <!-- CRM -->
+    <section id="tab-enquiries" class="panel" role="tabpanel">
+      <div class="toolbar">
+        <div class="chips" id="status-filter" role="group" aria-label="Filter by status"></div>
+        <input id="enquiry-search" type="search" placeholder="Search name, phone, city…" aria-label="Search enquiries">
+      </div>
+      <div class="split">
+        <div class="list-wrap">
+          <table class="list">
+            <thead><tr><th>Received</th><th>Name</th><th>Project</th><th>Status</th></tr></thead>
+            <tbody id="enquiry-rows"></tbody>
+          </table>
+          <p id="enquiry-empty" class="empty" hidden>No enquiries here yet.</p>
+        </div>
+        <aside id="enquiry-detail" class="detail" aria-live="polite">
+          <p class="empty">Select an enquiry to see the details.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- CMS: projects -->
+    <section id="tab-projects" class="panel" role="tabpanel" hidden>
+      <div class="toolbar">
+        <p class="muted">Projects appear on the website in the order below (lowest number first).</p>
+        <button class="btn" type="button" id="add-project">Add project</button>
+      </div>
+      <div class="split">
+        <div id="project-list" class="cards"></div>
+        <aside id="project-editor" class="detail">
+          <p class="empty">Select a project to edit it, or add a new one.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- CMS: site settings -->
+    <section id="tab-settings" class="panel" role="tabpanel" hidden>
+      <form id="settings-form" class="settings" novalidate>
+        <fieldset>
+          <legend>Contact details</legend>
+          <div class="grid2">
+            <label>Phone (as shown)<input name="phone" placeholder="+91 98000 00000"></label>
+            <label>WhatsApp number<input name="whatsapp" placeholder="919800000000"><small>Country code and number, digits only.</small></label>
+            <label>Email<input name="email" type="email"></label>
+            <label>LinkedIn page (optional)<input name="linkedin" type="url"></label>
+            <label class="full">Head office address<input name="address"></label>
+            <label>Where you work<input name="regions"></label>
+            <label>Office hours<input name="hours"></label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Figures (About page)</legend>
+          <div id="stats-rows" class="stats-rows"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Testimonial (Home page)</legend>
+          <label>Quote<textarea name="quote" rows="3"></textarea></label>
+          <div class="grid2">
+            <label>Person or role<input name="t_name"></label>
+            <label>Organisation<input name="t_org"></label>
+          </div>
+          <small>Leave the quote empty to hide the testimonial section.</small>
+        </fieldset>
+        <fieldset>
+          <legend>Sample-content notice</legend>
+          <label class="check"><input type="checkbox" name="showSampleNotice"> Show the "sample content" bar at the top of every page</label>
+          <small>Untick this once your real projects and details are in.</small>
+        </fieldset>
+        <div class="actions">
+          <button class="btn" type="submit">Save site content</button>
+          <p id="settings-status" class="status-msg" role="status"></p>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <p id="toast" class="toast" role="status" hidden></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
