@@ -24,7 +24,23 @@
       <input id="login-password" type="password" autocomplete="current-password" required>
       <p id="login-error" class="error" role="alert"></p>
       <button class="btn" type="submit">Sign in</button>
+      <p class="hint"><button type="button" class="linklike" id="forgot-password">Forgot your password?</button></p>
       <p class="hint"><a href="../index.html">Back to the website</a></p>
+    </form>
+  </main>
+
+  <!-- Set a password (after an invitation or a reset email) -->
+  <main id="password-view" class="login" hidden>
+    <form id="password-form" class="login-card" novalidate>
+      <p class="brand"><b>AVS</b>PMC <span>Admin</span></p>
+      <h1>Set your password</h1>
+      <p>Signed in as <b id="password-email"></b>. Choose a password for future sign-ins.</p>
+      <label for="new-password">New password</label>
+      <input id="new-password" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="confirm-password">Type it again</label>
+      <input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required>
+      <p id="password-error" class="error" role="alert"></p>
+      <button class="btn" type="submit">Save password</button>
     </form>
   </main>
 

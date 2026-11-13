@@ -6,6 +6,11 @@
 (function () {
   "use strict";
   var CFG = window.AVS_CONFIG;
+  // Invitation and password-reset emails link back here with details in
+  // the address; read them before the Supabase client tidies the URL.
+  var linkInfo = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+  var linkType = linkInfo.get("type");               // "invite" or "recovery"
+  var linkError = linkInfo.get("error_description");  // e.g. expired link
   var sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
   var SECTORS = CFG.sectors || [];
   var STATUSES = [
@@ -61,11 +66,17 @@
 
   /* ---- Auth -------------------------------------------------------- */
   function show(view) {
-    ["login-view", "denied-view", "app-view"].forEach(function (id) { $("#" + id).hidden = id !== view; });
+    ["login-view", "password-view", "denied-view", "app-view"].forEach(function (id) { $("#" + id).hidden = id !== view; });
   }
   function start(session) {
     if (!session) { show("login-view"); return; }
     var user = session.user;
+    if (linkType === "invite" || linkType === "recovery") {
+      $("#password-email").textContent = user.email;
+      show("password-view");
+      $("#new-password").focus();
+      return;
+    }
     sb.from("admins").select("user_id").eq("user_id", user.id).then(function (res) {
       if (res.error || !res.data || !res.data.length) {
         $("#denied-email").textContent = user.email;
@@ -93,9 +104,40 @@
         start(res.data.session);
       });
   });
+  $("#forgot-password").addEventListener("click", function () {
+    var email = $("#login-email").value.trim();
+    var err = $("#login-error");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "Enter your email above first, then click this link."; $("#login-email").focus(); return; }
+    sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }).then(function (res) {
+      err.textContent = res.error
+        ? "Couldn't send the email just now. Wait a minute and try again."
+        : "If that email has an admin account, a link to set a new password is on its way.";
+    });
+  });
+
+  $("#password-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var p1 = $("#new-password").value, p2 = $("#confirm-password").value;
+    var err = $("#password-error");
+    err.textContent = "";
+    if (p1.length < 8) { err.textContent = "Use at least 8 characters."; return; }
+    if (p1 !== p2) { err.textContent = "The two passwords don't match."; return; }
+    var btn = $("button", e.target);
+    btn.disabled = true;
+    sb.auth.updateUser({ password: p1 }).then(function (res) {
+      btn.disabled = false;
+      if (res.error) { err.textContent = "Couldn't save the password: " + res.error.message; return; }
+      e.target.reset();
+      linkType = null;
+      toast("Password saved");
+      sb.auth.getSession().then(function (r) { start(r.data.session); });
+    });
+  });
+
   $all("[data-signout]").forEach(function (b) {
     b.addEventListener("click", function () { sb.auth.signOut().then(function () { show("login-view"); }); });
   });
+  if (linkError) $("#login-error").textContent = "That link didn't work (" + linkError.replace(/\+/g, " ") + "). Ask for a new one.";
   sb.auth.getSession().then(function (res) { start(res.data.session); });
 
   /* ---- Tabs -------------------------------------------------------- */
