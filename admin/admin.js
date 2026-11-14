@@ -26,7 +26,17 @@
     { id: "no", label: "Projects page only" },
   ];
 
-  var state = { enquiries: [], projects: [], filter: "new", search: "", enquiryId: null, projectId: null };
+  // Enquiries come from two websites that share this database: AVSPMC and the ATIVEER solar site.
+  var SITES = [
+    { id: "all", label: "All websites" },
+    { id: "pmc", label: "AVSPMC" },
+    { id: "solar", label: "Solar (solar.avsllp.co)" },
+  ];
+  var savedSite = "all";
+  try { savedSite = localStorage.getItem("admin-site-filter") || "all"; } catch (err) { /* storage blocked */ }
+  if (!SITES.some(function (s) { return s.id === savedSite; })) savedSite = "all";
+
+  var state = { enquiries: [], projects: [], filter: "new", site: savedSite, search: "", enquiryId: null, projectId: null };
 
   function $(s, r) { return (r || document).querySelector(s); }
   function $all(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -44,6 +54,7 @@
   }
   // Where a lead came from, in words.
   function sourceLabel(e) {
+    if (isSolar(e)) return "Solar website (solar.avsllp.co)";
     var s = e.source || "contact";
     if (s.indexOf("resource:") === 0) {
       var slug = s.slice(9);
@@ -55,6 +66,10 @@
     return s === "whatsapp" ? "Contact form, sent on WhatsApp" : "Contact form";
   }
   function isDownload(e) { return (e.source || "").indexOf("resource:") === 0; }
+  // Older solar rows predate the `site` column; they are recognisable by their project type.
+  function isSolar(e) { return e.site === "solar" || String(e.sector || "").indexOf("Solar EPC:") === 0; }
+  function siteOf(e) { return isSolar(e) ? "solar" : "pmc"; }
+  function solarType(e) { return String(e.sector || "").replace(/^Solar EPC:\s*/, "") || "Not specified"; }
   function img(url) { return !url ? "" : /^https?:\/\//.test(url) ? url : "../" + url; }
   function digits(s) { return String(s || "").replace(/\D/g, ""); }
 
@@ -182,9 +197,9 @@
         if (state.enquiries.some(function (x) { return x.id === e.id; })) return;
         state.enquiries.unshift(e);
         renderEnquiries();
-        toast((isDownload(e) ? "New download lead: " : "New enquiry from ") + e.name);
+        toast((isSolar(e) ? "New solar enquiry from " : isDownload(e) ? "New download lead: " : "New enquiry from ") + e.name);
         if (window.Notification && Notification.permission === "granted") {
-          var n = new Notification("New AVSPMC enquiry", {
+          var n = new Notification(isSolar(e) ? "New solar enquiry" : "New AVSPMC enquiry", {
             body: e.name + (e.sector ? ", " + e.sector : "") + (e.city ? ", " + e.city : ""),
             icon: "../assets/img/favicon.svg",
           });
@@ -205,13 +220,25 @@
   }
 
   function renderEnquiries() {
-    var counts = { all: state.enquiries.length };
-    STATUSES.forEach(function (s) { counts[s.id] = 0; });
-    state.enquiries.forEach(function (e) { counts[e.status] = (counts[e.status] || 0) + 1; });
+    // The tab badge and page title count new enquiries from both websites.
+    var allNew = state.enquiries.filter(function (e) { return e.status === "new"; }).length;
     var badge = $("#new-count");
-    badge.textContent = counts.new;
-    badge.hidden = !counts.new;
-    document.title = (counts.new ? "(" + counts.new + ") " : "") + "Admin | AVSPMC";
+    badge.textContent = allNew;
+    badge.hidden = !allNew;
+    document.title = (allNew ? "(" + allNew + ") " : "") + "Admin | AVSPMC";
+
+    var siteCounts = { all: state.enquiries.length, pmc: 0, solar: 0 };
+    state.enquiries.forEach(function (e) { siteCounts[siteOf(e)]++; });
+    $("#site-filter").innerHTML = SITES.map(function (s) {
+      return '<button type="button" data-site="' + s.id + '" aria-pressed="' + (state.site === s.id) + '">' +
+        esc(s.label) + " (" + siteCounts[s.id] + ")</button>";
+    }).join("");
+
+    // Status counts follow the chosen website.
+    var inSite = state.enquiries.filter(function (e) { return state.site === "all" || siteOf(e) === state.site; });
+    var counts = { all: inSite.length };
+    STATUSES.forEach(function (s) { counts[s.id] = 0; });
+    inSite.forEach(function (e) { counts[e.status] = (counts[e.status] || 0) + 1; });
 
     $("#status-filter").innerHTML = [{ id: "all", label: "All" }].concat(STATUSES).map(function (s) {
       return '<button type="button" data-status="' + s.id + '" aria-pressed="' + (state.filter === s.id) + '">' +
@@ -219,20 +246,30 @@
     }).join("");
 
     var q = state.search.toLowerCase();
-    var rows = state.enquiries.filter(function (e) {
+    var rows = inSite.filter(function (e) {
       if (state.filter !== "all" && e.status !== state.filter) return false;
       if (!q) return true;
       return [e.name, e.phone, e.email, e.city, e.sector, e.message, sourceLabel(e)].join(" ").toLowerCase().indexOf(q) > -1;
     });
     $("#enquiry-rows").innerHTML = rows.map(function (e) {
+      var project = isSolar(e)
+        ? '<span class="site-tag">Solar</span>' + esc(solarType(e)) + '<span class="sub">' + esc([e.area, e.city].filter(Boolean).join(", ")) + "</span>"
+        : esc(isDownload(e) ? sourceLabel(e) : (e.sector || "Not specified")) + '<span class="sub">' + esc(isDownload(e) ? "Resource download" : e.city) + "</span>";
       return '<tr data-id="' + e.id + '" class="' + (e.status === "new" ? "is-new " : "") + (e.id === state.enquiryId ? "selected" : "") + '">' +
         "<td>" + esc(when(e.created_at)) + "</td>" +
         "<td>" + esc(e.name) + '<span class="sub">' + esc(e.phone) + "</span></td>" +
-        "<td>" + esc(isDownload(e) ? sourceLabel(e) : (e.sector || "Not specified")) + '<span class="sub">' + esc(isDownload(e) ? "Resource download" : e.city) + "</span></td>" +
+        "<td>" + project + "</td>" +
         "<td>" + pill(e.status) + "</td></tr>";
     }).join("");
     $("#enquiry-empty").hidden = rows.length > 0;
   }
+  $("#site-filter").addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    state.site = b.getAttribute("data-site");
+    try { localStorage.setItem("admin-site-filter", state.site); } catch (err) { /* storage blocked */ }
+    renderEnquiries();
+  });
   $("#status-filter").addEventListener("click", function (e) {
     var b = e.target.closest("button");
     if (!b) return;
@@ -266,10 +303,15 @@
         "<dt>Came from</dt><dd>" + esc(sourceLabel(e)) + "</dd>" +
         "<dt>Phone</dt><dd>" + esc(e.phone) + "</dd>" +
         "<dt>Email</dt><dd>" + esc(e.email || "Not given") + "</dd>" +
-        "<dt>Project type</dt><dd>" + esc(e.sector || "Not specified") + "</dd>" +
-        "<dt>City</dt><dd>" + esc(e.city || "Not specified") + "</dd>" +
-        "<dt>Built-up area</dt><dd>" + esc(e.area || "Not specified") + "</dd>" +
-        "<dt>Stage</dt><dd>" + esc(e.stage || "Not specified") + "</dd>" +
+        (isSolar(e)
+          ? "<dt>Project type</dt><dd>" + esc(solarType(e)) + "</dd>" +
+            "<dt>Site location</dt><dd>" + esc(e.city || "Not specified") + "</dd>" +
+            "<dt>Capacity</dt><dd>" + esc(e.area || "Not specified") + "</dd>" +
+            "<dt>Wants to start</dt><dd>" + esc(String(e.stage || "").replace(/^Start:\s*/, "") || "Not specified") + "</dd>"
+          : "<dt>Project type</dt><dd>" + esc(e.sector || "Not specified") + "</dd>" +
+            "<dt>City</dt><dd>" + esc(e.city || "Not specified") + "</dd>" +
+            "<dt>Built-up area</dt><dd>" + esc(e.area || "Not specified") + "</dd>" +
+            "<dt>Stage</dt><dd>" + esc(e.stage || "Not specified") + "</dd>") +
       "</dl>" +
       '<p class="message">' + esc(e.message) + "</p>" +
       '<form id="enquiry-form" class="form-stack">' +

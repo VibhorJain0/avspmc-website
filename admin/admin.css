@@ -52,6 +52,10 @@ small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; f
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { font: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid #C9CED6; border-radius: 999px; background: var(--white); cursor: pointer; }
 .chips button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: var(--white); }
+.filters { display: grid; gap: 8px; }
+.chips-site button { font-weight: 600; }
+.chips-site button[data-site="solar"][aria-pressed="true"] { background: #15803D; border-color: #15803D; }
+.site-tag { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .02em; vertical-align: 1px; background: #E3F4EA; color: #15803D; }
 
 .split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 960px) { .split { grid-template-columns: 1fr; } }

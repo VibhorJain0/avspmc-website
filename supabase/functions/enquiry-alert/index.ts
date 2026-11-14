@@ -11,6 +11,8 @@
 // Supabase > Edge Functions > Secrets:
 //   RESEND_API_KEY   your Resend API key
 //   ALERT_EMAIL_TO   where alerts go (comma-separate for several)
+//   ALERT_EMAIL_TO_SOLAR optional; where solar.avsllp.co alerts go instead
+//                    (if not set, they go to ALERT_EMAIL_TO as well)
 //   ALERT_EMAIL_FROM optional, e.g. "AVSPMC Website <alerts@yourdomain>"
 //                    (needs a domain verified in Resend; otherwise the
 //                    default onboarding@resend.dev sender is used)
@@ -52,8 +54,13 @@ Deno.serve(async (req) => {
   if (!e || e.alerted_at) return json({ skipped: "unknown or already alerted" });
   if (Date.now() - new Date(e.created_at).getTime() > 15 * 60 * 1000) return json({ skipped: "too old" });
 
+  // `site` says which website sent it: "pmc" or "solar" (solar.avsllp.co, the ATIVEER solar site).
+  // Older solar rows are also recognisable by a project type starting "Solar EPC:".
+  const isSolar = e.site === "solar" || String(e.sector || "").startsWith("Solar EPC:");
   const key = Deno.env.get("RESEND_API_KEY");
-  const to = (Deno.env.get("ALERT_EMAIL_TO") || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const list = (v: string | undefined) => (v || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const solarTo = isSolar ? list(Deno.env.get("ALERT_EMAIL_TO_SOLAR")) : [];
+  const to = solarTo.length ? solarTo : list(Deno.env.get("ALERT_EMAIL_TO"));
   if (!key || !to.length) return json({ sent: false, reason: "email alerts not configured" });
 
   // Claim the enquiry so two calls can't both send.
@@ -62,9 +69,7 @@ Deno.serve(async (req) => {
     .eq("id", id).is("alerted_at", null).select("id");
   if (!claimed?.length) return json({ skipped: "already alerted" });
 
-  // The ATIVEER solar site (solar.avsllp.co) saves into this same table with a
-  // project type starting "Solar EPC:", the capacity in `area` and "Start: ..." in `stage`.
-  const isSolar = String(e.sector || "").startsWith("Solar EPC:");
+  // Solar enquiries keep the capacity in `area` and "Start: ..." in `stage`.
   const rows: [string, string][] = isSolar ? [
     ["Name", e.name],
     ["Phone", e.phone],
