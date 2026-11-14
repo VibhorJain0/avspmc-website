@@ -1,4 +1,5 @@
-// AVSPMC: emails an alert for each new website enquiry.
+// AVSPMC: emails an alert for each new website enquiry. Enquiries from the
+// ATIVEER solar site (solar.avsllp.co) share the table and get their own labels.
 //
 // Called by a database trigger with { id } after an enquiry is inserted.
 // It does its own checks instead of trusting the caller: it loads the
@@ -61,7 +62,18 @@ Deno.serve(async (req) => {
     .eq("id", id).is("alerted_at", null).select("id");
   if (!claimed?.length) return json({ skipped: "already alerted" });
 
-  const rows: [string, string][] = [
+  // The ATIVEER solar site (solar.avsllp.co) saves into this same table with a
+  // project type starting "Solar EPC:", the capacity in `area` and "Start: ..." in `stage`.
+  const isSolar = String(e.sector || "").startsWith("Solar EPC:");
+  const rows: [string, string][] = isSolar ? [
+    ["Name", e.name],
+    ["Phone", e.phone],
+    ["Email", e.email || "Not given"],
+    ["Project type", String(e.sector).replace(/^Solar EPC:\s*/, "") || "Not specified"],
+    ["Site location", e.city || "Not specified"],
+    ["Capacity", e.area || "Not specified"],
+    ["Wants to start", String(e.stage || "").replace(/^Start:\s*/, "") || "Not specified"],
+  ] : [
     ["Name", e.name],
     ["Phone", e.phone],
     ["Email", e.email || "Not given"],
@@ -74,11 +86,13 @@ Deno.serve(async (req) => {
   if (wa.length === 10) wa = "91" + wa;
   const source = String(e.source || "contact");
   const isDownload = source.startsWith("resource:");
-  const intro = isDownload ? "Someone downloaded a free resource from the AVSPMC website."
+  const intro = isSolar ? "New solar EPC enquiry from the ATIVEER solar website (solar.avsllp.co)."
+    : isDownload ? "Someone downloaded a free resource from the AVSPMC website."
     : source === "estimator" ? "Someone used the cost estimator and asked for a call back."
     : source === "career" ? "New job application from the AVSPMC website."
     : "New enquiry from the AVSPMC website.";
-  const subject = isDownload ? `Download lead: ${e.name}, ${String(e.message || "").replace(/^Downloaded: /, "")}`
+  const subject = isSolar ? `Solar enquiry: ${e.name}${e.area ? ", " + e.area : ""}${e.city ? ", " + e.city : ""}`
+    : isDownload ? `Download lead: ${e.name}, ${String(e.message || "").replace(/^Downloaded: /, "")}`
     : source === "estimator" ? `Estimator lead: ${e.name}, ${e.sector || "project"}${e.area ? ", " + e.area : ""}`
     : source === "career" ? `Job application: ${e.name}, ${e.sector || "role not given"}`
     : `New enquiry: ${e.name}${e.sector ? ", " + e.sector : ""}${e.city ? ", " + e.city : ""}`;
@@ -120,8 +134,9 @@ Deno.serve(async (req) => {
     console.error("Resend error", res.status, detail);
     return json({ sent: false, status: res.status }, 502);
   }
-  let autoReply = "off";
-  try {
+  // The thank-you email is written and signed as AVSPMC, so it is not sent to solar enquiries.
+  let autoReply = isSolar ? "off: solar enquiry" : "off";
+  if (!isSolar) try {
     autoReply = await sendAutoReply(sb, key, e, source);
   } catch (err) {
     console.error("Auto-reply failed", err);
